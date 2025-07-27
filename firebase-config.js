@@ -2,7 +2,7 @@
 const firebaseConfig = {
     apiKey: "AIzaSyDfaBbnuKb8Y0Tr9Hai7jQPcalT4IzH8Bg",
     authDomain: "prueba-fae95.firebaseapp.com",
-    databaseURL: "https://prueba-fae95-default-rtdb.firebaseio.com",
+    databaseURL: "https://prueba-fae95-default-rtdb.firebaseio.com", // Se puede mantener si usas RTDB para otra cosa
     projectId: "prueba-fae95",
     storageBucket: "prueba-fae95.firebasestorage.app",
     messagingSenderId: "506974470269",
@@ -13,6 +13,9 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Create global instances for other scripts to use
-const db = firebase.database();
+// FIRESTORE: Inicializamos Firestore
+const db = firebase.firestore(); 
 const auth = firebase.auth();
+
+// Mantenemos la referencia a RTDB por si se usa para el mapeo email-uid
+const rtdb = firebase.database();
