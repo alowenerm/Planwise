@@ -16,6 +16,3 @@ firebase.initializeApp(firebaseConfig);
 // FIRESTORE: Inicializamos Firestore
 const db = firebase.firestore(); 
 const auth = firebase.auth();
-
-// Mantenemos la referencia a RTDB por si se usa para el mapeo email-uid
-const rtdb = firebase.database();
