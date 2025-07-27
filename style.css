@@ -1,0 +1,215 @@
+/* --- ESTILOS GENERALES Y LAYOUT --- */
+body { 
+    background-color: #f8f9fa; 
+}
+.card { 
+    box-shadow: 0 2px 4px rgba(0,0,0,.1); 
+}
+.card .table-responsive { 
+    max-height: 70vh; /* Aumentar altura para la tabla de tareas */
+}
+tfoot { 
+    font-weight: bold; 
+    background-color: #f8f9fa; 
+}
+
+/* --- ESTILOS DE CABECERA Y KPIs --- */
+.header-kpi { 
+    text-align: center; 
+    padding: 0.3rem 0.6rem; 
+    border: 1px solid #dee2e6; 
+    border-radius: .375rem; 
+    background-color: #fff; 
+    flex: 1; 
+}
+.header-kpi-value { 
+    font-size: 1.1rem; 
+    font-weight: bold; 
+}
+.header-kpi-label { 
+    font-size: 0.75rem; 
+    color: #6c757d; 
+    text-transform: uppercase; 
+}
+#save-status { 
+    font-size: 0.8rem; 
+    color: #6c757d; 
+    transition: opacity 0.5s ease-in-out; 
+}
+.btn-xs { 
+    padding: .15rem .4rem; 
+    font-size: .75rem; 
+}
+
+/* --- ESTILOS PARA INPUT DE NOMBRE DE LISTA DE TAREAS --- */
+.task-list-name-header {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #212529;
+    width: 100%;
+    max-width: 800px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+.task-list-name-header:focus {
+    color: #212529;
+    background-color: #fff;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
+}
+
+/* --- ESTILOS PARA DRAG & DROP EN TABLAS --- */
+.drag-handle { 
+    cursor: move; 
+    text-align: center; 
+    vertical-align: middle; 
+    width: 30px; 
+    min-width: 30px; 
+}
+.sortable-ghost { 
+    opacity: 0.4; 
+    background-color: #c8ebfb; 
+}
+.sortable-drag { 
+    background-color: #e9f5fe; 
+}
+
+/* --- ESTILOS DE AUTENTICACIÓN --- */
+#auth-container { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    position: fixed; 
+    top: 0; left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background-color: #f8f9fa; 
+    z-index: 2000; 
+}
+.auth-card { 
+    width: 100%; 
+    max-width: 420px; 
+    padding: 2rem; 
+}
+#app-container { 
+    display: none; 
+}
+
+/* --- ESTILOS PARA MODALES --- */
+.modal-header { 
+    background-color: #f8f9fa; 
+    border-bottom: 1px solid #dee2e6; 
+}
+.table-hover .task-list-row:hover { /* Renombrado de .project-row */
+    background-color: #f1f3f5; 
+    cursor: pointer; 
+}
+.action-btn-cell { 
+    width: 80px; 
+    text-align: right; 
+}
+.role-select-cell { 
+    width: 150px; 
+}
+
+/* --- ESTILOS PARA BARRA LATERAL Y CONTENIDO PRINCIPAL --- */
+#app-container { 
+    min-height: 100vh; 
+}
+#app-header {
+    background-color: rgba(248, 249, 250, 0.95);
+    backdrop-filter: blur(5px);
+    padding: 1rem;
+    z-index: 1021; 
+}
+.tab-content > .tab-pane { 
+    padding: 1rem !important; 
+}
+
+#sidebar {
+    width: 260px;
+    transition: width 0.3s ease-in-out;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+body.sidebar-collapsed #sidebar {
+    width: 72px;
+    align-items: center;
+}
+#sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #333;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+#sidebar .nav-link.active, #sidebar .nav-link:hover {
+    background-color: #e9ecef;
+    color: #000;
+    font-weight: 500;
+}
+#sidebar .nav-link i {
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+.nav-link-text {
+    transition: opacity 0.2s ease-in-out, width 0.2s ease-in-out;
+    white-space: nowrap;
+    opacity: 1;
+}
+body.sidebar-collapsed .nav-link-text,
+body.sidebar-collapsed #sidebar .dropdown-toggle strong {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .nav-link {
+    justify-content: center;
+}
+body.sidebar-collapsed #sidebar .dropdown-toggle::after {
+    display: none;
+}
+#main-content-wrapper {
+    width: calc(100% - 260px);
+    transition: width 0.3s ease-in-out;
+}
+body.sidebar-collapsed #main-content-wrapper {
+    width: calc(100% - 72px);
+}
+#sidebar .dropdown-menu {
+    min-width: 180px;
+}
+#sidebar .dropdown-toggle strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+    display: inline-block;
+}
+
+#sidebar #sidebar-toggle {
+    background-color: transparent;
+    border: none;
+    width: 100%;
+    justify-content: flex-end;
+    color: #6c757d;
+    padding: 0.5rem 0.25rem;
+}
+
+#sidebar #sidebar-toggle:hover {
+    background-color: #e9ecef;
+    color: #000;
+}
+
+body.sidebar-collapsed #sidebar #sidebar-toggle {
+    justify-content: center;
+}

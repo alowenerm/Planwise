@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración - Brick Wise</title>
+    
+    <link rel="icon" type="image/png" href="https://alowenerm.github.io/Ciclos/brickwise-ft.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+</head>
+<body class="page-admin">
+
+    <div id="auth-container">
+        <div class="card auth-card">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <img src="https://alowenerm.github.io/Ciclos/brickwise-ft.png" alt="Logo" style="height: 80px;">
+                    <h4 class="mt-3">Panel de Administración</h4>
+                    <p class="text-muted">Inicia sesión para continuar</p>
+                </div>
+                <div id="auth-error" class="alert alert-danger" style="display: none;"></div>
+                <div class="d-grid gap-2">
+                    <button id="google-signin-btn" class="btn btn-primary btn-lg">
+                        <i class="bi bi-google me-2"></i> Iniciar Sesión con Google
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div id="app-header" class="sticky-top">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="https://alowenerm.github.io/Ciclos/brickwise-ft.png" alt="Logo" style="height: 50px;">
+                        <h4 class="mb-0">Panel de Administración</h4>
+                    </div>
+                    <div class="text-end">
+                        <div id="user-info" class="fw-bold"></div>
+                        <a href="#" id="logout-btn" style="text-decoration: none; color: var(--bw-gray);">Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container mt-4">
+            <ul class="nav nav-tabs" id="adminTab" role="tablist">
+                <li class="nav-item" role="presentation"><button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-panel">Gestión de Usuarios</button></li>
+                <li class="nav-item" role="presentation"><button class="nav-link" id="projects-tab" data-bs-toggle="tab" data-bs-target="#projects-panel">Gestión de Proyectos</button></li>
+            </ul>
+            <div class="tab-content pt-3" id="adminTabContent">
+                <div class="tab-pane fade show active" id="users-panel" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Usuarios Registrados</h5>
+                            <div class="d-flex align-items-center" style="width: 300px;">
+                                <input type="text" id="user-search-filter" class="form-control form-control-sm" placeholder="Buscar por email o dominio...">
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="users-table-container" class="table-responsive">
+                                <p class="text-muted">Cargando usuarios...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="projects-panel" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">Proyectos</h5>
+                                    <div class="d-flex align-items-center" style="width: 300px;">
+                                        <input type="text" id="project-search-filter" class="form-control form-control-sm" placeholder="Buscar por nombre, usuario o dominio...">
+                                    </div>
+                                </div>
+                                <div id="projects-table-container" class="table-responsive" style="max-height: 80vh;">
+                                    <p class="text-muted p-3">Cargando proyectos...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar acceso a proyectos -->
+    <div class="modal fade" id="projectAccessModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="project-access-title">Acceso al Proyecto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="project-access-container"><p class="text-muted">Cargando miembros...</p></div>
+                    <hr>
+                    <div>
+                        <h6>Añadir Usuario al Proyecto</h6>
+                        <div id="add-user-error" class="alert alert-danger" style="display: none;"></div>
+                        <div class="input-group">
+                            <input type="email" id="add-user-email" class="form-control" placeholder="Email del usuario">
+                            <select id="add-user-role" class="form-select" style="flex: 0 0 140px;">
+                                <option value="viewer">Solo Lectura</option>
+                                <option value="editor">Editor</option>
+                                <option value="owner">Propietario</option>
+                            </select>
+                            <button id="add-user-btn" class="btn btn-success">Añadir</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const userInfoEl = document.getElementById('user-info');
+        const authErrorEl = document.getElementById('auth-error');
+        
+        let currentAdminUser = null;
+        let selectedProjectId = null;
+        let allUsersData = {};
+        let allProjectsData = {};
+        let allProjectMembers = {};
+        let projectAccessModal;
+
+        auth.onAuthStateChanged(user => {
+            if (user) { checkIfAdmin(user); } 
+            else {
+                currentAdminUser = null;
+                authContainer.style.display = 'flex';
+                appContainer.style.display = 'none';
+            }
+        });
+
+        const checkIfAdmin = (user) => {
+            const sanitizedEmail = user.email.replace(/\./g, ',');
+            db.ref(`admins/${sanitizedEmail}`).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    currentAdminUser = user;
+                    userInfoEl.textContent = user.email;
+                    authContainer.style.display = 'none';
+                    appContainer.style.display = 'block';
+                    initializeAppLogic();
+                } else {
+                    showAuthMessage('Acceso denegado. Esta cuenta no tiene privilegios de administrador.');
+                    auth.signOut();
+                }
+            });
+        };
+
+        const handleGoogleSignIn = () => {
+            clearAuthError();
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => showAuthMessage("Error: " + err.message));
+        };
+
+        document.getElementById('google-signin-btn').addEventListener('click', handleGoogleSignIn);
+        document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+        const showAuthMessage = (message) => { authErrorEl.textContent = message; authErrorEl.style.display = 'block'; };
+        const clearAuthError = () => { authErrorEl.style.display = 'none'; };
+
+        function initializeAppLogic() {
+            projectAccessModal = new bootstrap.Modal(document.getElementById('projectAccessModal'));
+            listenForUsers();
+            listenForProjects();
+            listenForProjectMembers();
+            
+            document.getElementById('users-table-container').addEventListener('click', handleUserActions);
+            document.getElementById('projects-table-container').addEventListener('click', handleProjectActions);
+            document.getElementById('project-access-container').addEventListener('click', handleProjectAccessActions);
+            document.getElementById('add-user-btn').addEventListener('click', handleAddUserToProject);
+            document.getElementById('user-search-filter').addEventListener('input', () => renderUsersTable(allUsersData));
+            document.getElementById('project-search-filter').addEventListener('input', () => renderProjectsTable(allProjectsData, allProjectMembers));
+        }
+
+        function listenForUsers() {
+            db.ref('users').on('value', snapshot => {
+                allUsersData = snapshot.exists() ? snapshot.val() : {};
+                renderUsersTable(allUsersData);
+            });
+        }
+
+        function listenForProjects() {
+            db.ref('projects').on('value', snapshot => {
+                allProjectsData = snapshot.exists() ? snapshot.val() : {};
+                renderProjectsTable(allProjectsData, allProjectMembers);
+            });
+        }
+
+        function listenForProjectMembers() {
+            db.ref('project_members').on('value', snapshot => {
+                allProjectMembers = snapshot.exists() ? snapshot.val() : {};
+                renderProjectsTable(allProjectsData, allProjectMembers);
+                if (selectedProjectId && projectAccessModal._isShown) {
+                    renderProjectAccessList(allProjectMembers[selectedProjectId]);
+                }
+            });
+        }
+
+        const formatValue = (value, type = 'number', currency = 'UF') => {
+            if (value === undefined || value === null || isNaN(value)) return '--';
+            if (type === 'percent') return `${(value * 100).toFixed(1)}%`;
+            if (type === 'currency') return `${currency} ${new Intl.NumberFormat('es-CL').format(Math.round(value))}`;
+            return new Intl.NumberFormat('es-CL').format(Math.round(value));
+        };
+
+        function renderUsersTable(users) {
+            const container = document.getElementById('users-table-container');
+            const searchTerm = document.getElementById('user-search-filter').value.toLowerCase();
+            
+            const filteredUsers = Object.entries(users).filter(([uid, data]) => {
+                if (!searchTerm) return true;
+                const email = data.email.toLowerCase();
+                if (searchTerm.startsWith('@')) {
+                    return email.endsWith(searchTerm);
+                }
+                return email.includes(searchTerm);
+            });
+
+            if (filteredUsers.length === 0) {
+                container.innerHTML = '<p class="text-muted p-3">No se encontraron usuarios.</p>';
+                return;
+            }
+
+            const rowsHtml = filteredUsers.map(([uid, userData]) => {
+                const regDate = userData.registrationDate ? new Date(userData.registrationDate).toLocaleDateString('es-CL') : 'N/A';
+                const expiryDate = userData.subscriptionExpiry ? new Date(userData.subscriptionExpiry).toISOString().split('T')[0] : '';
+                const provider = userData.authProvider === 'password' ? '<span class="badge bg-secondary">Email/Pass</span>' : '<span class="badge" style="background-color: #e9ecef; color: #495057;">Google</span>';
+                const isGoogleUser = userData.authProvider !== 'password';
+                const isAdmin = userData.email === currentAdminUser.email;
+
+                return `<tr>
+                    <td>${userData.email}</td>
+                    <td>${provider}</td>
+                    <td>${regDate}</td>
+                    <td><input type="date" class="form-control form-control-sm expiry-date" value="${expiryDate}" data-uid="${uid}"></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-success" data-action="save-expiry" data-uid="${uid}">Guardar</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-action="reset-password" data-email="${userData.email}" ${isGoogleUser ? 'disabled' : ''}>Reset Passwd</button>
+                        <button class="btn btn-sm btn-light" data-action="delete-user" data-uid="${uid}" data-email="${userData.email}" ${isAdmin ? 'disabled' : ''}><i class="bi bi-trash text-danger"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+            container.innerHTML = `<table class="table table-hover align-middle"><thead class="table-light"><tr><th>Email</th><th>Proveedor</th><th>Registro</th><th>Vencimiento Suscripción</th><th class="text-end">Acciones</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+        }
+
+        function renderProjectsTable(projects, members) {
+            const container = document.getElementById('projects-table-container');
+            const searchTerm = document.getElementById('project-search-filter').value.toLowerCase();
+
+            const filteredProjects = Object.entries(projects).filter(([pid, pdata]) => {
+                if (!searchTerm) return true;
+                const name = (pdata.projectName || '').toLowerCase();
+                const projectMembers = members[pid] || {};
+                const ownerEntry = Object.entries(projectMembers).find(([uid, udata]) => udata.role === 'owner');
+                const ownerEmail = ownerEntry ? ownerEntry[1].email.toLowerCase() : '';
+                if (searchTerm.startsWith('@')) {
+                    return ownerEmail.endsWith(searchTerm);
+                }
+                return name.includes(searchTerm) || ownerEmail.includes(searchTerm);
+            });
+
+            if (filteredProjects.length === 0) {
+                container.innerHTML = '<p class="text-muted p-3">No se encontraron proyectos.</p>';
+                return;
+            }
+
+            const rowsHtml = filteredProjects.map(([id, data]) => {
+                const projectMembers = members[id] || {};
+                const ownerEntry = Object.entries(projectMembers).find(([uid, udata]) => udata.role === 'owner');
+                const ownerEmail = ownerEntry ? ownerEntry[1].email : 'N/A';
+                const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString('es-CL') : (data.creationDate ? new Date(data.creationDate).toLocaleString('es-CL') : '--');
+
+                return `
+                <tr class="clickable-row" data-action="open-modal" data-project-id="${id}" data-project-name="${data.projectName || ''}">
+                    <td>${data.projectName || 'Proyecto sin nombre'}</td>
+                    <td>${ownerEmail}</td>
+                    <td>${lastUpdated}</td>
+                    <td>${data.currency || '--'}</td>
+                    <td class="text-end">${formatValue(data.kpi_aportes, 'currency', data.currency)}</td>
+                    <td class="text-end">${formatValue(data.kpi_tir, 'percent')}</td>
+                    <td class="text-end">${formatValue(data.kpi_unidades_residenciales)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-light" data-action="delete-project" data-project-id="${id}" data-project-name="${data.projectName || ''}">
+                            <i class="bi bi-trash text-muted"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+
+            container.innerHTML = `<table class="table table-hover align-middle">
+                <thead class="table-light"><tr>
+                    <th>Nombre</th><th>Propietario</th><th>Última Modificación</th><th>Moneda</th>
+                    <th class="text-end">Aportes</th><th class="text-end">TIR</th>
+                    <th class="text-end">Unidades</th><th class="text-center"></th>
+                </tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+        }
+
+        function handleProjectActions(e) {
+            const deleteBtn = e.target.closest('button[data-action="delete-project"]');
+            if (deleteBtn) {
+                e.stopPropagation(); // Evita que se dispare el click de la fila
+                const projectId = deleteBtn.dataset.projectId;
+                const projectName = deleteBtn.dataset.projectName;
+                handleDeleteProject(projectId, projectName);
+                return;
+            }
+
+            const target = e.target.closest('.clickable-row');
+            if (!target || target.dataset.action !== 'open-modal') return;
+            
+            selectedProjectId = target.dataset.projectId;
+            document.getElementById('project-access-title').textContent = `Acceso: ${target.dataset.projectName}`;
+            renderProjectAccessList(allProjectMembers[selectedProjectId]);
+            
+            projectAccessModal.show();
+        }
+
+        function handleUserActions(e) {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const action = target.dataset.action; if (!action) return;
+            const uid = target.dataset.uid; const email = target.dataset.email;
+            if (action === 'save-expiry') {
+                const dateInput = document.querySelector(`input[type="date"][data-uid="${uid}"]`);
+                if (!dateInput.value) { alert("Seleccione una fecha válida."); return; }
+                db.ref(`users/${uid}/subscriptionExpiry`).set(new Date(dateInput.value+'T12:00:00Z').toISOString()).then(()=>alert('Fecha actualizada.')).catch(err=>alert('Error: '+err.message));
+            }
+            if (action === 'reset-password') {
+                if (confirm(`¿Enviar correo para restablecer contraseña a ${email}?`)) auth.sendPasswordResetEmail(email).then(() => alert('Correo enviado.')).catch(err => alert('Error: ' + err.message));
+            }
+            if (action === 'delete-user') {
+                if (confirm(`¿Seguro que quieres eliminar los DATOS del usuario ${email}?\n\nEsta acción es irreversible y eliminará su perfil, proyectos asociados y acceso a otros proyectos.`)) {
+                    const updates = {};
+                    updates[`/users/${uid}`] = null;
+                    updates[`/user_projects/${uid}`] = null;
+                    updates[`/email_to_uid/${email.replace(/\./g, ',')}`] = null;
+                    db.ref(`user_projects/${uid}`).once('value', snapshot => {
+                        if (snapshot.exists()) {
+                            snapshot.forEach(projectSnap => {
+                                updates[`/project_members/${projectSnap.key}/${uid}`] = null;
+                            });
+                        }
+                        db.ref().update(updates).then(() => alert('Datos del usuario eliminados.')).catch(err => alert('Error: ' + err.message));
+                    });
+                }
+            }
+        }
+
+        function renderProjectAccessList(members) {
+            const container = document.getElementById('project-access-container');
+            if(!members) { container.innerHTML = '<p class="text-muted">Este proyecto no tiene usuarios asignados.</p>'; return; }
+            const rowsHtml = Object.entries(members).map(([uid, memberData]) => {
+                const isOwner = memberData.role === 'owner';
+                return `<tr>
+                    <td>${memberData.email}</td>
+                    <td>
+                        <select class="form-select form-select-sm" data-uid="${uid}" ${isOwner ? 'disabled' : ''}>
+                            <option value="viewer" ${memberData.role === 'viewer' ? 'selected' : ''}>Solo Lectura</option>
+                            <option value="editor" ${memberData.role === 'editor' ? 'selected' : ''}>Editor</option>
+                            <option value="owner" ${memberData.role === 'owner' ? 'selected' : ''}>Propietario</option>
+                        </select>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-success" data-action="save-role" data-uid="${uid}" ${isOwner ? 'disabled' : ''}>Guardar Rol</button> 
+                        <button class="btn btn-sm btn-outline-danger" data-action="remove-user" data-uid="${uid}" ${isOwner ? 'disabled' : ''}>Quitar</button>
+                    </td>
+                </tr>`;
+            }).join('');
+            container.innerHTML = `<table class="table table-sm align-middle"><thead><tr><th>Email</th><th>Rol</th><th class="text-end">Acciones</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+        }
+        
+        async function handleProjectAccessActions(e) {
+            const target = e.target;
+            const { action, uid } = target.dataset; 
+            if(!action || !selectedProjectId || !uid) return;
+            
+            const updates = {};
+
+            if(action === 'save-role') {
+                const newRole = document.querySelector(`select[data-uid="${uid}"]`).value;
+                
+                if (newRole === 'owner') {
+                    if (!confirm('¿Estás seguro de que quieres transferir la propiedad de este proyecto? El propietario actual pasará a ser editor.')) {
+                        const originalRole = allProjectMembers[selectedProjectId][uid].role;
+                        target.closest('tr').querySelector('select').value = originalRole;
+                        return;
+                    }
+                    
+                    const membersSnapshot = await db.ref(`project_members/${selectedProjectId}`).once('value');
+                    const members = membersSnapshot.val();
+                    const ownerEntry = Object.entries(members).find(([memberUid, data]) => data.role === 'owner');
+                    
+                    if (ownerEntry) {
+                        const [oldOwnerUid, oldOwnerData] = ownerEntry;
+                        if (oldOwnerUid !== uid) {
+                            updates[`/project_members/${selectedProjectId}/${oldOwnerUid}/role`] = 'editor';
+                            updates[`/user_projects/${oldOwnerUid}/${selectedProjectId}/role`] = 'editor';
+                        }
+                    }
+                }
+
+                updates[`/project_members/${selectedProjectId}/${uid}/role`] = newRole;
+                updates[`/user_projects/${uid}/${selectedProjectId}/role`] = newRole;
+                
+                try {
+                    await db.ref().update(updates);
+                    alert('Rol actualizado.');
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            }
+
+            if(action === 'remove-user' && confirm('¿Seguro que quieres quitar el acceso a este usuario del proyecto?')) {
+                updates[`/project_members/${selectedProjectId}/${uid}`] = null;
+                updates[`/user_projects/${uid}/${selectedProjectId}`] = null;
+                db.ref().update(updates).then(() => alert('Usuario quitado del proyecto.')).catch(err => alert('Error: ' + err.message));
+            }
+        }
+        
+        async function handleDeleteProject(projectId, projectName) {
+            if (!projectId) return;
+            if (!confirm(`¿Estás seguro de que quieres ELIMINAR el proyecto "${projectName}"?\n\nEsta acción es PERMANENTE y borrará toda su información y los accesos de todos los usuarios.`)) {
+                return;
+            }
+
+            try {
+                const membersSnapshot = await db.ref(`project_members/${projectId}`).once('value');
+                const updates = {};
+                updates[`/projects/${projectId}`] = null;
+                updates[`/project_members/${projectId}`] = null;
+
+                if (membersSnapshot.exists()) {
+                    const members = membersSnapshot.val();
+                    for (const uid in members) {
+                        updates[`/user_projects/${uid}/${projectId}`] = null;
+                    }
+                }
+                
+                await db.ref().update(updates);
+                alert(`Proyecto "${projectName}" eliminado con éxito.`);
+                if (projectAccessModal._isShown) {
+                    projectAccessModal.hide();
+                }
+            } catch (error) {
+                alert('Error al eliminar el proyecto: ' + error.message);
+            }
+        }
+
+        async function handleAddUserToProject() {
+            const emailInput = document.getElementById('add-user-email');
+            const email = emailInput.value.trim();
+            const role = document.getElementById('add-user-role').value;
+            const errorEl = document.getElementById('add-user-error');
+            errorEl.style.display = 'none';
+
+            if(!email || !role || !selectedProjectId) { errorEl.textContent = 'Faltan datos.'; errorEl.style.display = 'block'; return; }
+            
+            try {
+                const sanitizedEmail = email.replace(/\./g, ',');
+                const uidSnapshot = await db.ref(`email_to_uid/${sanitizedEmail}`).once('value');
+                if(!uidSnapshot.exists()) { 
+                    errorEl.textContent = 'Usuario no encontrado. El usuario debe registrarse en la app primero.'; 
+                    errorEl.style.display = 'block'; 
+                    return; 
+                }
+                const targetUid = uidSnapshot.val();
+                
+                const projectSnapshot = await db.ref(`projects/${selectedProjectId}`).once('value');
+                const projectData = projectSnapshot.val();
+                if (!projectData) { throw new Error("No se pudo encontrar el proyecto."); }
+
+                const updates = {};
+                
+                if (role === 'owner') {
+                    if (!confirm('¿Estás seguro de que quieres transferir la propiedad de este proyecto? El propietario actual pasará a ser editor.')) {
+                        return;
+                    }
+                    const membersSnapshot = await db.ref(`project_members/${selectedProjectId}`).once('value');
+                    const members = membersSnapshot.val();
+                    const ownerEntry = Object.entries(members).find(([uid, data]) => data.role === 'owner');
+                    
+                    if (ownerEntry) {
+                        const [oldOwnerUid, oldOwnerData] = ownerEntry;
+                        if (oldOwnerUid !== targetUid) {
+                            updates[`/project_members/${selectedProjectId}/${oldOwnerUid}/role`] = 'editor';
+                            updates[`/user_projects/${oldOwnerUid}/${selectedProjectId}/role`] = 'editor';
+                        }
+                    }
+                }
+
+                const memberData = { email: email, role: role };
+                const userProjectData = { name: projectData.projectName || '', role: role, lastUpdated: new Date().toISOString() };
+                
+                updates[`/project_members/${selectedProjectId}/${targetUid}`] = memberData;
+                updates[`/user_projects/${targetUid}/${selectedProjectId}`] = userProjectData;
+
+                await db.ref().update(updates);
+                alert(role === 'owner' ? 'Propiedad transferida con éxito.' : 'Usuario añadido con éxito.');
+                emailInput.value = '';
+
+            } catch(error) { 
+                errorEl.textContent = 'Error: ' + error.message; 
+                errorEl.style.display = 'block'; 
+            }
+        }
+    });
+    </script>
+</body>
+</html>

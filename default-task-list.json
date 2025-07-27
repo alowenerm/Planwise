@@ -1,0 +1,13 @@
+{
+  "taskListName": "Nueva Lista de Tareas",
+  "tasks": [
+    {
+      "name": "Definir el objetivo principal",
+      "responsible": "",
+      "startDate": "",
+      "endDate": "",
+      "status": "Pendiente",
+      "priority": "Alta"
+    }
+  ]
+}
