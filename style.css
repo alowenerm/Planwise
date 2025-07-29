@@ -23,11 +23,11 @@ tfoot {
     flex: 1; 
 }
 .header-kpi-value { 
-    font-size: 1.1rem; 
+    font-size: 0.9rem; /* Reducido desde 1.1rem */
     font-weight: bold; 
 }
 .header-kpi-label { 
-    font-size: 0.75rem; 
+    font-size: 0.6rem; /* Reducido desde 0.75rem */
     color: #6c757d; 
     text-transform: uppercase; 
 }
@@ -218,4 +218,14 @@ body.sidebar-collapsed #sidebar #sidebar-toggle {
 input[readonly] {
     background-color: #e9ecef;
     cursor: not-allowed;
+}
+
+/* --- ESTILOS PARA GRÁFICO FRAPPE GANTT --- */
+.gantt .bar-wrapper.task-completed .bar {
+    fill: #e0e0e0; /* Relleno gris claro para tareas completadas */
+}
+.gantt .bar-wrapper.task-pending .bar {
+    fill: transparent; /* Fondo transparente */
+    stroke: #b0b0b0;   /* Borde gris claro */
+    stroke-width: 1;
 }

@@ -100,12 +100,17 @@ document.addEventListener('DOMContentLoaded', function() {
         taskListNameInput.addEventListener('input', debouncedSaveToFirestore);
         
         tasksTbody.addEventListener('change', (e) => {
-            // Si se cambia una fecha, validar y luego recalcular todo
-            if (e.target.matches('input[type="date"]') && !e.target.readOnly) {
-                const row = e.target.closest('tr');
-                validateAndCorrectDates(row, e.target);
+            const target = e.target;
+            const row = target.closest('tr');
+            if (!row) return;
+
+            if (target.matches('input[type="date"]') && !target.readOnly) {
+                validateAndCorrectDates(row);
                 runGanttCalculationAndUpdateUI();
+            } else if (target.matches('select[name="taskStatus"]')) {
+                runGanttCalculationAndUpdateUI(); // Recalcular KPIs de estado y gráfico
             }
+            
             debouncedSaveToFirestore();
         });
 
@@ -416,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('forgot-password-link').addEventListener('click', handleForgotPassword);
 
     // --- LÓGICA DE TAREAS Y CÁLCULO GANTT ---
-    function validateAndCorrectDates(row, changedInput) {
+    function validateAndCorrectDates(row) {
         const startDateInput = row.querySelector('[name="taskStartDate"]');
         const endDateInput = row.querySelector('[name="taskEndDate"]');
 
@@ -426,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const endDate = new Date(endDateInput.value);
 
         if (startDate > endDate) {
-            if (changedInput === startDateInput) {
+            if (document.activeElement === startDateInput) {
                 endDateInput.value = startDateInput.value;
             } else {
                 startDateInput.value = endDateInput.value;
@@ -443,29 +448,62 @@ document.addEventListener('DOMContentLoaded', function() {
             if (row) {
                 const startDateInput = row.querySelector('[name="taskStartDate"]');
                 const endDateInput = row.querySelector('[name="taskEndDate"]');
+                const durationCell = row.querySelector('.duration-cell');
 
                 startDateInput.value = task.startDate;
                 startDateInput.readOnly = task.startDateIsCalculated;
 
                 endDateInput.value = task.endDate;
                 endDateInput.readOnly = task.endDateIsCalculated;
+
+                if (task.startDate && task.endDate) {
+                    const start = new Date(task.startDate);
+                    const end = new Date(task.endDate);
+                    const duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    durationCell.textContent = duration;
+                } else {
+                    durationCell.textContent = '--';
+                }
             }
         });
         updateHeaderKPIs(calculatedTasks);
+        renderGanttChart(calculatedTasks); // Actualizar el gráfico
     }
 
     function updateHeaderKPIs(tasks) {
+        // KPIs de estado
         const totalTasks = tasks.length;
-        const pending = tasks.filter(t => t.status === 'Pendiente').length;
-        const inProgress = tasks.filter(t => t.status === 'En Progreso').length;
-        const completed = tasks.filter(t => t.status === 'Completada').length;
-        const totalValue = tasks.reduce((sum, task) => sum + (Number(task.value) || 0), 0);
-
+        const completedTasks = tasks.filter(t => t.status === 'Completada');
         document.querySelector('#kpi1 .header-kpi-value').textContent = totalTasks;
-        document.querySelector('#kpi2 .header-kpi-value').textContent = pending;
-        document.querySelector('#kpi3 .header-kpi-value').textContent = inProgress;
-        document.querySelector('#kpi4 .header-kpi-value').textContent = completed;
-        document.querySelector('#kpi5 .header-kpi-value').textContent = totalValue.toLocaleString('es-CL');
+        document.querySelector('#kpi2 .header-kpi-value').textContent = tasks.filter(t => t.status === 'Pendiente').length;
+        document.querySelector('#kpi3 .header-kpi-value').textContent = tasks.filter(t => t.status === 'En Progreso').length;
+        document.querySelector('#kpi4 .header-kpi-value').textContent = completedTasks.length;
+        document.querySelector('#kpi5 .header-kpi-value').textContent = tasks.reduce((sum, task) => sum + (Number(task.value) || 0), 0).toLocaleString('es-CL');
+        
+        // KPIs de proyecto
+        const validStartDates = tasks.map(t => t.startDate).filter(d => d).map(d => new Date(d));
+        const validEndDates = tasks.map(t => t.endDate).filter(d => d).map(d => new Date(d));
+
+        const projectStartDate = validStartDates.length > 0 ? new Date(Math.min.apply(null, validStartDates)) : null;
+        const projectEndDate = validEndDates.length > 0 ? new Date(Math.max.apply(null, validEndDates)) : null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        document.querySelector('#kpi9 .header-kpi-value').textContent = projectStartDate ? projectStartDate.toLocaleDateString('es-CL') : '--';
+        document.querySelector('#kpi10 .header-kpi-value').textContent = projectEndDate ? projectEndDate.toLocaleDateString('es-CL') : '--';
+        document.querySelector('#kpi11 .header-kpi-value').textContent = today.toLocaleDateString('es-CL');
+
+        if (projectStartDate && projectEndDate && projectEndDate >= projectStartDate) {
+            const totalDuration = projectEndDate - projectStartDate;
+            const elapsedDuration = today - projectStartDate;
+            const percentageElapsed = totalDuration > 0 ? Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100)) : 0;
+            document.querySelector('#kpi12 .header-kpi-value').textContent = `${percentageElapsed.toFixed(1)}%`;
+        } else {
+            document.querySelector('#kpi12 .header-kpi-value').textContent = '--';
+        }
+
+        const percentageCompleted = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0;
+        document.querySelector('#kpi13 .header-kpi-value').textContent = `${percentageCompleted.toFixed(1)}%`;
     }
 
     function addTaskRow(data = {}) {
@@ -476,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         newRow.dataset.dependencies = JSON.stringify(data.dependencies || []);
 
         const dependenciesCount = (data.dependencies || []).length;
-        const dependencyButtonText = dependenciesCount > 0 ? `${dependenciesCount}` : '0';
+        const dependencyButtonText = dependenciesCount;
 
         newRow.innerHTML = `
             <td class="drag-handle"><i class="bi bi-grip-vertical"></i></td>
@@ -490,6 +528,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
             <td><input type="date" class="form-control form-control-sm" name="taskStartDate" value="${data.startDate || ''}"></td>
             <td><input type="date" class="form-control form-control-sm" name="taskEndDate" value="${data.endDate || ''}"></td>
+            <td class="duration-cell text-center align-middle">--</td>
             <td><select class="form-select form-select-sm" name="taskStatus"><option>Pendiente</option><option>En Progreso</option><option>Completada</option></select></td>
             <td><select class="form-select form-select-sm" name="taskPriority"><option>Baja</option><option>Media</option><option>Alta</option></select></td>
             <td><button type="button" class="btn btn-sm btn-outline-secondary remove-task-btn">X</button></td>`;
