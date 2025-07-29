@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUserId = null;
     let currentTaskListId = null;
     let currentUserRole = null;
-    // FIRESTORE: Los listeners ahora son funciones de cancelación
     let unsubscribeTaskList = null;
     let unsubscribeMembers = null;
     let unsubscribeUserLists = null;
@@ -28,8 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const authErrorEl = document.getElementById('auth-error');
     const tasksTbody = document.getElementById('tasks-tbody');
     
-    let taskCounter = 0;
-
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
@@ -46,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const handleForgotPassword = (e) => { e.preventDefault(); clearAuthError(); if (!loginForm.email.value) { showAuthMessage("Ingresa tu correo."); return; } auth.sendPasswordResetEmail(loginForm.email.value).then(() => showAuthMessage("Correo de recuperación enviado.", "success")).catch(() => showAuthMessage("Error al enviar el correo.")); };
     
     const handleLogout = () => {
-        // FIRESTORE: Cancelar suscripciones
         if (unsubscribeTaskList) unsubscribeTaskList();
         if (unsubscribeMembers) unsubscribeMembers();
         if (unsubscribeUserLists) unsubscribeUserLists();
@@ -69,7 +65,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- GESTIÓN DE USUARIOS ---
     function handleUserLogin(user) {
-        // FIRESTORE: Guardar info de usuario en Firestore
         const userDocRef = db.collection('users').doc(user.uid);
         userDocRef.get().then(doc => {
             if (!doc.exists) {
@@ -125,7 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setReadOnly(false);
         document.getElementById('share-task-list-btn').style.display = 'none';
         
-        // Cargar plantilla por defecto
         try {
             const response = await fetch('default-task-list.json');
             const data = await response.json();
@@ -151,7 +145,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!currentTaskListId) {
             updateSaveStatus('Creando lista...');
             try {
-                // FIRESTORE: Usar .add() para crear un nuevo documento con ID automático
                 const newDocRef = await db.collection('tareas').add({
                     ...taskListDataToSave,
                     ownerId: currentUserId,
@@ -160,13 +153,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 currentTaskListId = newDocRef.id;
 
-                // FIRESTORE: Añadir al propietario a la subcolección de miembros
                 await db.collection('tareas').doc(currentTaskListId).collection('members').doc(currentUserId).set({
                     email: auth.currentUser.email,
                     role: 'owner'
                 });
 
-                // FIRESTORE: Añadir referencia en la lista de listas del usuario
                  await db.collection('user_task_lists').doc(currentUserId).collection('lists').doc(currentTaskListId).set({
                     name: data.taskListName,
                     role: 'owner'
@@ -183,12 +174,10 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             updateSaveStatus('Guardando...');
             try {
-                // FIRESTORE: Usar .update() para modificar un documento existente
                 const batch = db.batch();
                 const taskListRef = db.collection('tareas').doc(currentTaskListId);
                 batch.update(taskListRef, taskListDataToSave);
 
-                // Actualizar el nombre en las listas de todos los miembros
                 const membersSnapshot = await db.collection('tareas').doc(currentTaskListId).collection('members').get();
                 membersSnapshot.forEach(memberDoc => {
                     const userListRef = db.collection('user_task_lists').doc(memberDoc.id).collection('lists').doc(currentTaskListId);
@@ -216,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         currentTaskListId = taskListId;
         
-        // FIRESTORE: Obtener el rol del usuario de la subcolección de miembros
         const memberDoc = await db.collection('tareas').doc(taskListId).collection('members').doc(currentUserId).get();
         
         if (!memberDoc.exists) {
@@ -233,14 +221,12 @@ document.addEventListener('DOMContentLoaded', function() {
         shareBtn.disabled = (currentUserRole !== 'owner');
 
         updateSaveStatus('Cargando lista...');
-        // FIRESTORE: Escuchar cambios en el documento principal de la lista
         unsubscribeTaskList = db.collection('tareas').doc(taskListId).onSnapshot((doc) => {
             if (doc.exists) {
                 const serverData = doc.data();
-                // Compara sin los timestamps para evitar bucles de actualización
                 const localData = getTasksData();
                 if (JSON.stringify(serverData.tasks) === JSON.stringify(localData.tasks) && serverData.taskListName === localData.taskListName) {
-                     updateHeaderKPIs(serverData.tasks); // Asegura que los KPIs se actualicen
+                     updateHeaderKPIs(serverData.tasks);
                     return;
                 }
                 
@@ -276,7 +262,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('share-email-input').value = '';
         if (unsubscribeMembers) unsubscribeMembers();
         
-        // FIRESTORE: Escuchar la subcolección de miembros
         unsubscribeMembers = db.collection('tareas').doc(currentTaskListId).collection('members').onSnapshot(snapshot => {
             const members = {};
             snapshot.forEach(doc => { members[doc.id] = doc.data(); });
@@ -316,7 +301,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!email) { errorEl.textContent = 'Introduce un correo.'; errorEl.style.display = 'block'; return; }
         
         try {
-            // FIRESTORE: Buscar usuario por email
             const userQuery = await db.collection('users').where('email', '==', email).limit(1).get();
             if (userQuery.empty) { throw new Error('Usuario no encontrado.'); }
             const targetUserDoc = userQuery.docs[0];
@@ -353,7 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('open-task-lists-btn').addEventListener('click', () => taskListsModalInstance.show());
         if (unsubscribeUserLists) unsubscribeUserLists();
         
-        // FIRESTORE: Escuchar la subcolección de listas del usuario
         unsubscribeUserLists = db.collection('user_task_lists').doc(currentUserId).collection('lists').orderBy('name').onSnapshot(snapshot => {
             const lists = {};
             snapshot.forEach(doc => { lists[doc.id] = doc.data(); });
@@ -383,15 +366,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!confirm(`¿Eliminar la lista "${listName}"? Es irreversible.`)) return;
         updateSaveStatus('Eliminando...');
         
-        // FIRESTORE: Borrar un documento y sus subcolecciones es complejo.
-        // Se requiere un borrado en batch o una Cloud Function para asegurar la atomicidad.
         const batch = db.batch();
         const membersSnapshot = await db.collection('tareas').doc(listId).collection('members').get();
         membersSnapshot.forEach(doc => {
-            batch.delete(db.collection('user_task_lists').doc(doc.id).collection('lists').doc(listId)); // Borrar de user_task_lists
-            batch.delete(doc.ref); // Borrar miembro
+            batch.delete(db.collection('user_task_lists').doc(doc.id).collection('lists').doc(listId));
+            batch.delete(doc.ref);
         });
-        batch.delete(db.collection('tareas').doc(listId)); // Borrar lista principal
+        batch.delete(db.collection('tareas').doc(listId));
         await batch.commit();
 
         updateSaveStatus('Lista eliminada');
@@ -419,49 +400,124 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- LÓGICA DE TAREAS ---
     function updateHeaderKPIs(tasks) {
-        const total = tasks.length;
+        const totalTasks = tasks.length;
         const pending = tasks.filter(t => t.status === 'Pendiente').length;
         const inProgress = tasks.filter(t => t.status === 'En Progreso').length;
         const completed = tasks.filter(t => t.status === 'Completada').length;
-        document.querySelector('#kpi1 .header-kpi-value').textContent = total;
+        const totalValue = tasks.reduce((sum, task) => sum + (Number(task.value) || 0), 0);
+
+        document.querySelector('#kpi1 .header-kpi-value').textContent = totalTasks;
         document.querySelector('#kpi2 .header-kpi-value').textContent = pending;
         document.querySelector('#kpi3 .header-kpi-value').textContent = inProgress;
         document.querySelector('#kpi4 .header-kpi-value').textContent = completed;
+        document.querySelector('#kpi5 .header-kpi-value').textContent = totalValue.toLocaleString('es-CL');
     }
 
     function addTaskRow(data = {}) {
-        taskCounter++;
         const newRow = document.createElement('tr');
-        newRow.id = `task-row-${taskCounter}`;
+        const taskId = data.id || crypto.randomUUID();
+        newRow.dataset.taskId = taskId;
+
         newRow.innerHTML = `
             <td class="drag-handle"><i class="bi bi-grip-vertical"></i></td>
-            <td><input type="text" class="form-control form-control-sm" name="taskName" value="${data.name || ''}"></td>
             <td><input type="text" class="form-control form-control-sm" name="taskResponsible" value="${data.responsible || ''}"></td>
+            <td><input type="text" class="form-control form-control-sm" name="taskName" value="${data.name || ''}"></td>
+            <td><input type="number" class="form-control form-control-sm" name="taskValue" value="${data.value || 0}"></td>
+            <td><select class="form-select form-select-sm" name="taskDependencies" multiple></select></td>
             <td><input type="date" class="form-control form-control-sm" name="taskStartDate" value="${data.startDate || ''}"></td>
             <td><input type="date" class="form-control form-control-sm" name="taskEndDate" value="${data.endDate || ''}"></td>
             <td><select class="form-select form-select-sm" name="taskStatus"><option>Pendiente</option><option>En Progreso</option><option>Completada</option></select></td>
             <td><select class="form-select form-select-sm" name="taskPriority"><option>Baja</option><option>Media</option><option>Alta</option></select></td>
-            <td><button type="button" class="btn btn-sm btn-outline-secondary" onclick="removeRow('task-row-${taskCounter}')">X</button></td>`;
+            <td><button type="button" class="btn btn-sm btn-outline-secondary remove-task-btn">X</button></td>`;
+        
         tasksTbody.appendChild(newRow);
+
         if(data.status) newRow.querySelector('[name=taskStatus]').value = data.status;
         if(data.priority) newRow.querySelector('[name=taskPriority]').value = data.priority;
+        
+        newRow.querySelector('.remove-task-btn').addEventListener('click', () => {
+            newRow.remove();
+            updateDependencyDropdowns();
+            updateHeaderKPIs(getTasksData().tasks);
+            debouncedSaveToFirestore();
+        });
+        
+        newRow.querySelector('[name=taskName]').addEventListener('input', debounce(updateDependencyDropdowns, 400));
+
+        updateDependencyDropdowns();
         updateHeaderKPIs(getTasksData().tasks);
     }
-
-    window.removeRow = function(rowId) { document.getElementById(rowId).remove(); updateHeaderKPIs(getTasksData().tasks); debouncedSaveToFirestore(); }
     
+    function updateDependencyDropdowns() {
+        const allTasks = Array.from(tasksTbody.querySelectorAll('tr')).map(row => ({
+            id: row.dataset.taskId,
+            name: row.querySelector('[name=taskName]').value || 'Tarea sin nombre'
+        }));
+
+        tasksTbody.querySelectorAll('tr').forEach(row => {
+            const currentTaskId = row.dataset.taskId;
+            const dependencySelect = row.querySelector('[name=taskDependencies]');
+            const selectedDependencies = Array.from(dependencySelect.selectedOptions).map(opt => opt.value);
+            
+            dependencySelect.innerHTML = '';
+
+            allTasks.forEach(task => {
+                if (task.id !== currentTaskId) {
+                    const option = document.createElement('option');
+                    option.value = task.id;
+                    option.textContent = task.name;
+                    if (selectedDependencies.includes(task.id)) {
+                        option.selected = true;
+                    }
+                    dependencySelect.appendChild(option);
+                }
+            });
+        });
+    }
+
     function getTasksData() {
         const data = { taskListName: document.getElementById('taskListName').value, tasks: [] };
-        tasksTbody.querySelectorAll('tr').forEach(r => data.tasks.push({ name: r.querySelector('[name=taskName]').value, responsible: r.querySelector('[name=taskResponsible]').value, startDate: r.querySelector('[name=taskStartDate]').value, endDate: r.querySelector('[name=taskEndDate]').value, status: r.querySelector('[name=taskStatus]').value, priority: r.querySelector('[name=taskPriority]').value, }));
+        tasksTbody.querySelectorAll('tr').forEach(r => {
+            const dependenciesSelect = r.querySelector('[name=taskDependencies]');
+            data.tasks.push({
+                id: r.dataset.taskId,
+                name: r.querySelector('[name=taskName]').value,
+                responsible: r.querySelector('[name=taskResponsible]').value,
+                value: parseFloat(r.querySelector('[name=taskValue]').value) || 0,
+                dependencies: Array.from(dependenciesSelect.selectedOptions).map(opt => opt.value),
+                startDate: r.querySelector('[name=taskStartDate]').value,
+                endDate: r.querySelector('[name=taskEndDate]').value,
+                status: r.querySelector('[name=taskStatus]').value,
+                priority: r.querySelector('[name=taskPriority]').value,
+            });
+        });
         return data;
     }
     
     function loadTasksFromJSON(data) {
         tasksTbody.innerHTML = '';
-        taskCounter = 0;
         document.getElementById('taskListName').value = data.taskListName || 'Nueva Lista';
-        if (Array.isArray(data.tasks)) data.tasks.forEach(taskData => addTaskRow(taskData));
-        updateHeaderKPIs(data.tasks || []);
+        
+        const tasks = data.tasks || [];
+        if (Array.isArray(tasks)) {
+            tasks.forEach(taskData => addTaskRow(taskData));
+        }
+        
+        // Segunda pasada para establecer las dependencias, ahora que todas las opciones existen
+        tasksTbody.querySelectorAll('tr').forEach(row => {
+            const taskId = row.dataset.taskId;
+            const taskData = tasks.find(t => t.id === taskId);
+            if (taskData && taskData.dependencies) {
+                const dependencySelect = row.querySelector('[name=taskDependencies]');
+                Array.from(dependencySelect.options).forEach(option => {
+                    if (taskData.dependencies.includes(option.value)) {
+                        option.selected = true;
+                    }
+                });
+            }
+        });
+
+        updateHeaderKPIs(tasks);
     }
 
     function initSortable(tbodyElement) { if (tbodyElement) new Sortable(tbodyElement, { animation: 150, handle: '.drag-handle', onEnd: debouncedSaveToFirestore, }); }

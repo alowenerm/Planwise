@@ -2,8 +2,11 @@
   "taskListName": "Nueva Lista de Tareas",
   "tasks": [
     {
+      "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
       "name": "Definir el objetivo principal",
       "responsible": "",
+      "value": 0,
+      "dependencies": [],
       "startDate": "",
       "endDate": "",
       "status": "Pendiente",
