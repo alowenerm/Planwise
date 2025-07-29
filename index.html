@@ -151,13 +151,13 @@
                                             <tr>
                                                 <th style="width: 30px;"><i class="bi bi-arrows-move"></i></th>
                                                 <th style="width: 10%;">Responsable</th>
-                                                <th style="width: 30%;">Tarea</th>
-                                                <th style="width: 10%;">Valor</th>
-                                                <th style="width: 15%;">Tarea Predecesora</th>
-                                                <th>Fecha Inicio</th>
-                                                <th>Fecha Fin</th>
-                                                <th>Estado</th>
-                                                <th>Prioridad</th>
+                                                <th style="width: 22%;">Tarea</th>
+                                                <th style="width: 8%;">Valor</th>
+                                                <th style="width: 10%;">Predecesoras</th>
+                                                <th style="width: 11%;">Fecha Inicio</th>
+                                                <th style="width: 11%;">Fecha Fin</th>
+                                                <th style="width: 12%;">Estado</th>
+                                                <th style="width: 12%;">Prioridad</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
@@ -217,11 +217,33 @@
       </div>
     </div>
 
+    <!-- Modal para Dependencias -->
+    <div class="modal fade" id="dependencyModal" tabindex="-1" aria-labelledby="dependencyModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="dependencyModalLabel">Gestionar Dependencias para: <span id="dependency-task-name" class="fw-bold"></span></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="dependency-modal-body-content">
+              <p class="text-muted">Cargando tareas disponibles...</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="save-dependencies-btn">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- External JS Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Our Custom Scripts (Order is important!) -->
     <script src="firebase-config.js"></script>
+    <script src="gantt-calculator.js"></script>
     <script src="main.js"></script>
 
 </body>

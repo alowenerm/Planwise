@@ -1,13 +1,264 @@
 {
-  "taskListName": "Nueva Lista de Tareas",
+  "taskListName": "Proyecto Villa Amanecer",
   "tasks": [
     {
-      "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
-      "name": "Definir el objetivo principal",
-      "responsible": "",
-      "value": 0,
+      "id": "task-01",
+      "name": "Estudio de Cabida y Viabilidad",
+      "responsible": "Arquitecto Jefe",
+      "value": 150,
       "dependencies": [],
+      "startDate": "2024-08-01",
+      "endDate": "2024-08-15",
+      "status": "Completada",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-02",
+      "name": "Diseño Arquitectónico y Planos",
+      "responsible": "Arquitecto Jefe",
+      "value": 400,
+      "dependencies": [
+        { "id": "task-01", "type": "Fin-Inicio (FI)" }
+      ],
       "startDate": "",
+      "endDate": "2024-09-30",
+      "status": "Completada",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-03",
+      "name": "Obtención de Permisos de Construcción",
+      "responsible": "Gestor Legal",
+      "value": 250,
+      "dependencies": [
+        { "id": "task-02", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2024-11-30",
+      "status": "En Progreso",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-04",
+      "name": "Limpieza y Nivelación del Terreno",
+      "responsible": "Jefe de Obra",
+      "value": 300,
+      "dependencies": [
+        { "id": "task-03", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2024-12-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-05",
+      "name": "Excavaciones y Cimientos",
+      "responsible": "Jefe de Obra",
+      "value": 800,
+      "dependencies": [
+        { "id": "task-04", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-01-31",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-06",
+      "name": "Construcción de Estructura Principal (Obra Gruesa)",
+      "responsible": "Jefe de Obra",
+      "value": 2500,
+      "dependencies": [
+        { "id": "task-05", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-03-31",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-07",
+      "name": "Instalación de Losa y Techos",
+      "responsible": "Jefe de Obra",
+      "value": 1200,
+      "dependencies": [
+        { "id": "task-06", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-04-30",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-08",
+      "name": "Instalación de Muros Exteriores y Aislación",
+      "responsible": "Contratista Exterior",
+      "value": 900,
+      "dependencies": [
+        { "id": "task-07", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-05-31",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-09",
+      "name": "Instalación de Ventanas y Puertas Exteriores",
+      "responsible": "Contratista Exterior",
+      "value": 750,
+      "dependencies": [
+        { "id": "task-08", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-06-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-10",
+      "name": "Instalación de Redes Sanitarias (Agua/Alcantarillado)",
+      "responsible": "Contratista Sanitario",
+      "value": 1100,
+      "dependencies": [
+        { "id": "task-07", "type": "Inicio-Inicio (II)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-05-20",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-11",
+      "name": "Instalación de Red Eléctrica Principal",
+      "responsible": "Contratista Eléctrico",
+      "value": 1300,
+      "dependencies": [
+        { "id": "task-07", "type": "Inicio-Inicio (II)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-05-25",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-12",
+      "name": "Tabiquería Interior (Muros Secos)",
+      "responsible": "Contratista Interior",
+      "value": 600,
+      "dependencies": [
+        { "id": "task-09", "type": "Fin-Inicio (FI)" },
+        { "id": "task-10", "type": "Fin-Inicio (FI)" },
+        { "id": "task-11", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-07-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-13",
+      "name": "Cableado Eléctrico y Cajas de Conexión",
+      "responsible": "Contratista Eléctrico",
+      "value": 550,
+      "dependencies": [
+        { "id": "task-12", "type": "Inicio-Inicio (II)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-07-31",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-14",
+      "name": "Instalación de Tuberías Internas y Grifería",
+      "responsible": "Contratista Sanitario",
+      "value": 450,
+      "dependencies": [
+        { "id": "task-12", "type": "Inicio-Inicio (II)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-07-31",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-15",
+      "name": "Pintura y Acabados de Muros",
+      "responsible": "Pintor",
+      "value": 700,
+      "dependencies": [
+        { "id": "task-13", "type": "Fin-Inicio (FI)" },
+        { "id": "task-14", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-08-31",
+      "status": "Pendiente",
+      "priority": "Baja"
+    },
+    {
+      "id": "task-16",
+      "name": "Instalación de Pisos y Revestimientos",
+      "responsible": "Contratista Interior",
+      "value": 1000,
+      "dependencies": [
+        { "id": "task-15", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-09-20",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-17",
+      "name": "Instalación de Muebles de Cocina y Baño",
+      "responsible": "Contratista Interior",
+      "value": 1500,
+      "dependencies": [
+        { "id": "task-16", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-10-10",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-18",
+      "name": "Instalación de Artefactos Eléctricos y Lámparas",
+      "responsible": "Contratista Eléctrico",
+      "value": 400,
+      "dependencies": [
+        { "id": "task-17", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-10-20",
+      "status": "Pendiente",
+      "priority": "Baja"
+    },
+    {
+      "id": "task-19",
+      "name": "Paisajismo y Obras Exteriores",
+      "responsible": "Paisajista",
+      "value": 850,
+      "dependencies": [
+        { "id": "task-09", "type": "Fin-Inicio (FI)" }
+      ],
+      "startDate": "",
+      "endDate": "2025-10-30",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-20",
+      "name": "Limpieza Final y Entrega de Obra",
+      "responsible": "Jefe de Obra",
+      "value": 200,
+      "dependencies": [
+        { "id": "task-18", "type": "Fin-Fin (FF)" },
+        { "id": "task-19", "type": "Fin-Fin (FF)" }
+      ],
+      "startDate": "2025-10-21",
       "endDate": "",
       "status": "Pendiente",
       "priority": "Alta"

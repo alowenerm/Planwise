@@ -213,3 +213,9 @@ body.sidebar-collapsed #main-content-wrapper {
 body.sidebar-collapsed #sidebar #sidebar-toggle {
     justify-content: center;
 }
+
+/* --- ESTILOS PARA CAMPOS DE FECHA CALCULADOS --- */
+input[readonly] {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}

@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let unsubscribeUserLists = null;
     let lastKnownServerState = null;
     let isReadOnlyMode = false;
+    let dependencyModalInstance = null;
+    let currentEditingTaskId = null;
     
     const debounce = (func, delay) => {
         let timeoutId;
@@ -96,13 +98,28 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('new-task-list-btn').addEventListener('click', () => loadNewTaskListState(true));
         const taskListNameInput = document.getElementById('taskListName');
         taskListNameInput.addEventListener('input', debouncedSaveToFirestore);
-        document.getElementById('tasks').addEventListener('change', debouncedSaveToFirestore);
-        document.getElementById('add-task').addEventListener('click', () => { addTaskRow(); debouncedSaveToFirestore(); });
+        
+        tasksTbody.addEventListener('change', (e) => {
+            // Si se cambia una fecha, validar y luego recalcular todo
+            if (e.target.matches('input[type="date"]') && !e.target.readOnly) {
+                const row = e.target.closest('tr');
+                validateAndCorrectDates(row, e.target);
+                runGanttCalculationAndUpdateUI();
+            }
+            debouncedSaveToFirestore();
+        });
+
+        document.getElementById('add-task').addEventListener('click', () => { 
+            addTaskRow(); 
+            runGanttCalculationAndUpdateUI();
+            debouncedSaveToFirestore(); 
+        });
 
         const sidebarToggle = document.getElementById('sidebar-toggle');
         sidebarToggle.addEventListener('click', () => { document.body.classList.toggle('sidebar-collapsed'); sidebarToggle.querySelector('i').className = document.body.classList.contains('sidebar-collapsed') ? 'bi bi-chevron-right' : 'bi-chevron-left'; });
         sidebarToggle.querySelector('i').className = document.body.classList.contains('sidebar-collapsed') ? 'bi bi-chevron-right' : 'bi-chevron-left';
         initSortable(tasksTbody);
+        initDependencyModal();
 
         const initialTaskListId = getTaskListIdFromUrl();
         if (initialTaskListId) { await listenToTaskList(initialTaskListId); } 
@@ -398,7 +415,45 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('logout-btn-sidebar').addEventListener('click', handleLogout);
     document.getElementById('forgot-password-link').addEventListener('click', handleForgotPassword);
 
-    // --- LÓGICA DE TAREAS ---
+    // --- LÓGICA DE TAREAS Y CÁLCULO GANTT ---
+    function validateAndCorrectDates(row, changedInput) {
+        const startDateInput = row.querySelector('[name="taskStartDate"]');
+        const endDateInput = row.querySelector('[name="taskEndDate"]');
+
+        if (!startDateInput.value || !endDateInput.value) return;
+
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+
+        if (startDate > endDate) {
+            if (changedInput === startDateInput) {
+                endDateInput.value = startDateInput.value;
+            } else {
+                startDateInput.value = endDateInput.value;
+            }
+        }
+    }
+
+    function runGanttCalculationAndUpdateUI() {
+        const currentTasks = getTasksData().tasks;
+        const calculatedTasks = calculateTaskDates(currentTasks);
+
+        calculatedTasks.forEach(task => {
+            const row = tasksTbody.querySelector(`tr[data-task-id="${task.id}"]`);
+            if (row) {
+                const startDateInput = row.querySelector('[name="taskStartDate"]');
+                const endDateInput = row.querySelector('[name="taskEndDate"]');
+
+                startDateInput.value = task.startDate;
+                startDateInput.readOnly = task.startDateIsCalculated;
+
+                endDateInput.value = task.endDate;
+                endDateInput.readOnly = task.endDateIsCalculated;
+            }
+        });
+        updateHeaderKPIs(calculatedTasks);
+    }
+
     function updateHeaderKPIs(tasks) {
         const totalTasks = tasks.length;
         const pending = tasks.filter(t => t.status === 'Pendiente').length;
@@ -417,13 +472,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const newRow = document.createElement('tr');
         const taskId = data.id || crypto.randomUUID();
         newRow.dataset.taskId = taskId;
+        
+        newRow.dataset.dependencies = JSON.stringify(data.dependencies || []);
+
+        const dependenciesCount = (data.dependencies || []).length;
+        const dependencyButtonText = dependenciesCount > 0 ? `${dependenciesCount}` : '0';
 
         newRow.innerHTML = `
             <td class="drag-handle"><i class="bi bi-grip-vertical"></i></td>
             <td><input type="text" class="form-control form-control-sm" name="taskResponsible" value="${data.responsible || ''}"></td>
             <td><input type="text" class="form-control form-control-sm" name="taskName" value="${data.name || ''}"></td>
             <td><input type="number" class="form-control form-control-sm" name="taskValue" value="${data.value || 0}"></td>
-            <td><select class="form-select form-select-sm" name="taskDependencies" multiple></select></td>
+            <td class="dependency-cell text-center">
+                <button type="button" class="btn btn-sm btn-light w-100" data-bs-toggle="modal" data-bs-target="#dependencyModal" data-task-id="${taskId}">
+                    ${dependencyButtonText}
+                </button>
+            </td>
             <td><input type="date" class="form-control form-control-sm" name="taskStartDate" value="${data.startDate || ''}"></td>
             <td><input type="date" class="form-control form-control-sm" name="taskEndDate" value="${data.endDate || ''}"></td>
             <td><select class="form-select form-select-sm" name="taskStatus"><option>Pendiente</option><option>En Progreso</option><option>Completada</option></select></td>
@@ -437,54 +501,22 @@ document.addEventListener('DOMContentLoaded', function() {
         
         newRow.querySelector('.remove-task-btn').addEventListener('click', () => {
             newRow.remove();
-            updateDependencyDropdowns();
-            updateHeaderKPIs(getTasksData().tasks);
+            runGanttCalculationAndUpdateUI();
             debouncedSaveToFirestore();
         });
         
-        newRow.querySelector('[name=taskName]').addEventListener('input', debounce(updateDependencyDropdowns, 400));
-
-        updateDependencyDropdowns();
         updateHeaderKPIs(getTasksData().tasks);
     }
     
-    function updateDependencyDropdowns() {
-        const allTasks = Array.from(tasksTbody.querySelectorAll('tr')).map(row => ({
-            id: row.dataset.taskId,
-            name: row.querySelector('[name=taskName]').value || 'Tarea sin nombre'
-        }));
-
-        tasksTbody.querySelectorAll('tr').forEach(row => {
-            const currentTaskId = row.dataset.taskId;
-            const dependencySelect = row.querySelector('[name=taskDependencies]');
-            const selectedDependencies = Array.from(dependencySelect.selectedOptions).map(opt => opt.value);
-            
-            dependencySelect.innerHTML = '';
-
-            allTasks.forEach(task => {
-                if (task.id !== currentTaskId) {
-                    const option = document.createElement('option');
-                    option.value = task.id;
-                    option.textContent = task.name;
-                    if (selectedDependencies.includes(task.id)) {
-                        option.selected = true;
-                    }
-                    dependencySelect.appendChild(option);
-                }
-            });
-        });
-    }
-
     function getTasksData() {
         const data = { taskListName: document.getElementById('taskListName').value, tasks: [] };
         tasksTbody.querySelectorAll('tr').forEach(r => {
-            const dependenciesSelect = r.querySelector('[name=taskDependencies]');
             data.tasks.push({
                 id: r.dataset.taskId,
                 name: r.querySelector('[name=taskName]').value,
                 responsible: r.querySelector('[name=taskResponsible]').value,
                 value: parseFloat(r.querySelector('[name=taskValue]').value) || 0,
-                dependencies: Array.from(dependenciesSelect.selectedOptions).map(opt => opt.value),
+                dependencies: JSON.parse(r.dataset.dependencies || '[]'),
                 startDate: r.querySelector('[name=taskStartDate]').value,
                 endDate: r.querySelector('[name=taskEndDate]').value,
                 status: r.querySelector('[name=taskStatus]').value,
@@ -503,21 +535,104 @@ document.addEventListener('DOMContentLoaded', function() {
             tasks.forEach(taskData => addTaskRow(taskData));
         }
         
-        // Segunda pasada para establecer las dependencias, ahora que todas las opciones existen
-        tasksTbody.querySelectorAll('tr').forEach(row => {
-            const taskId = row.dataset.taskId;
-            const taskData = tasks.find(t => t.id === taskId);
-            if (taskData && taskData.dependencies) {
-                const dependencySelect = row.querySelector('[name=taskDependencies]');
-                Array.from(dependencySelect.options).forEach(option => {
-                    if (taskData.dependencies.includes(option.value)) {
-                        option.selected = true;
-                    }
+        runGanttCalculationAndUpdateUI();
+    }
+
+    // --- LÓGICA DEL MODAL DE DEPENDENCIAS ---
+    function initDependencyModal() {
+        const modalEl = document.getElementById('dependencyModal');
+        if (!modalEl) return;
+        dependencyModalInstance = new bootstrap.Modal(modalEl);
+
+        modalEl.addEventListener('show.bs.modal', (event) => {
+            const button = event.relatedTarget;
+            currentEditingTaskId = button.getAttribute('data-task-id');
+            populateDependencyModal(currentEditingTaskId);
+        });
+
+        document.getElementById('save-dependencies-btn').addEventListener('click', saveDependencies);
+    }
+
+    function populateDependencyModal(editingTaskId) {
+        const allTasks = getTasksData().tasks;
+        const editingTask = allTasks.find(t => t.id === editingTaskId);
+        const currentDependencies = editingTask.dependencies || [];
+
+        document.getElementById('dependency-task-name').textContent = editingTask.name || 'Tarea sin nombre';
+        const container = document.getElementById('dependency-modal-body-content');
+        container.innerHTML = '';
+
+        const availableTasks = allTasks.filter(t => t.id !== editingTaskId);
+
+        if (availableTasks.length === 0) {
+            container.innerHTML = '<p class="text-muted">No hay otras tareas para establecer dependencias.</p>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'table table-sm';
+        table.innerHTML = `<thead><tr><th style="width: 50px;"></th><th>Tarea</th><th>Tipo de Dependencia</th></tr></thead>`;
+        const tbody = document.createElement('tbody');
+
+        availableTasks.forEach(task => {
+            const dependency = currentDependencies.find(d => d.id === task.id);
+            const isChecked = !!dependency;
+            const dependencyType = dependency ? dependency.type : 'Fin-Inicio (FI)';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input dependency-checkbox" type="checkbox" value="${task.id}" ${isChecked ? 'checked' : ''}>
+                    </div>
+                </td>
+                <td>${task.name || 'Tarea sin nombre'}</td>
+                <td>
+                    <select class="form-select form-select-sm dependency-type-select" ${!isChecked ? 'disabled' : ''}>
+                        <option value="Fin-Inicio (FI)" ${dependencyType === 'Fin-Inicio (FI)' ? 'selected' : ''}>Fin-Inicio (FI)</option>
+                        <option value="Inicio-Inicio (II)" ${dependencyType === 'Inicio-Inicio (II)' ? 'selected' : ''}>Inicio-Inicio (II)</option>
+                        <option value="Fin-Fin (FF)" ${dependencyType === 'Fin-Fin (FF)' ? 'selected' : ''}>Fin-Fin (FF)</option>
+                        <option value="Inicio-Fin (IF)" ${dependencyType === 'Inicio-Fin (IF)' ? 'selected' : ''}>Inicio-Fin (IF)</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+        container.querySelectorAll('.dependency-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const select = e.target.closest('tr').querySelector('.dependency-type-select');
+                select.disabled = !e.target.checked;
+            });
+        });
+    }
+
+    function saveDependencies() {
+        const newDependencies = [];
+        document.querySelectorAll('#dependency-modal-body-content tbody tr').forEach(row => {
+            const checkbox = row.querySelector('.dependency-checkbox');
+            if (checkbox.checked) {
+                const typeSelect = row.querySelector('.dependency-type-select');
+                newDependencies.push({
+                    id: checkbox.value,
+                    type: typeSelect.value
                 });
             }
         });
 
-        updateHeaderKPIs(tasks);
+        const taskRow = tasksTbody.querySelector(`tr[data-task-id="${currentEditingTaskId}"]`);
+        if (taskRow) {
+            taskRow.dataset.dependencies = JSON.stringify(newDependencies);
+            const button = taskRow.querySelector('.dependency-cell button');
+            button.textContent = newDependencies.length;
+        }
+
+        dependencyModalInstance.hide();
+        runGanttCalculationAndUpdateUI();
+        debouncedSaveToFirestore();
     }
 
     function initSortable(tbodyElement) { if (tbodyElement) new Sortable(tbodyElement, { animation: 150, handle: '.drag-handle', onEnd: debouncedSaveToFirestore, }); }
