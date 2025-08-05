@@ -120,12 +120,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
         tasksTbody.addEventListener('click', (e) => {
             const subtaskBtn = e.target.closest('.subtask-count-btn');
-            if (subtaskBtn) {
+            if (subtaskBtn && !subtaskBtn.disabled) {
                 navigateToSubtasks(subtaskBtn.dataset.taskId);
             }
         });
 
-        document.getElementById('navigate-up-btn').addEventListener('click', navigateUp);
+        const breadcrumbEl = document.getElementById('breadcrumb-title');
+        if (breadcrumbEl) {
+            breadcrumbEl.addEventListener('click', () => {
+                if (taskViewStack.length > 0) {
+                    navigateUp();
+                }
+            });
+        } else {
+            console.warn("El elemento 'breadcrumb-title' no se encontró. Verifica que el HTML esté actualizado.");
+        }
+
+        // --- NUEVO: Listener para actualizar el Gantt al mostrar la pestaña ---
+        const ganttTabBtn = document.getElementById('gantt-tab-btn');
+        if (ganttTabBtn) {
+            ganttTabBtn.addEventListener('shown.bs.tab', () => {
+                renderGanttChart(allTasksCache);
+            });
+        }
+        // --- FIN DEL NUEVO BLOQUE ---
 
         document.getElementById('add-task').addEventListener('click', () => { 
             addTaskRow(); 
@@ -521,14 +539,14 @@ document.addEventListener('DOMContentLoaded', function() {
             <td class="drag-handle"><i class="bi bi-grip-vertical"></i></td>
             <td><input type="text" class="form-control form-control-sm" name="taskResponsible" value="${data.responsible || ''}"></td>
             <td><input type="text" class="form-control form-control-sm" name="taskName" value="${data.name || ''}"></td>
-            <td class="subtask-cell text-center">
-                <button type="button" class="btn btn-sm btn-link subtask-count-btn" data-task-id="${taskId}">0</button>
-            </td>
             <td><input type="number" class="form-control form-control-sm" name="taskValue" value="${data.value || 0}"></td>
             <td class="dependency-cell text-center">
                 <button type="button" class="btn btn-sm btn-light w-100" data-bs-toggle="modal" data-bs-target="#dependencyModal" data-task-id="${taskId}">
                     ${dependencyButtonText}
                 </button>
+            </td>
+            <td class="subtask-cell text-center">
+                <button type="button" class="btn btn-sm btn-light w-100 subtask-count-btn" data-task-id="${taskId}">0</button>
             </td>
             <td><input type="date" class="form-control form-control-sm" name="taskStartDate" value="${data.startDate || ''}" ${data.startDateIsCalculated ? 'readonly' : ''}></td>
             <td><input type="date" class="form-control form-control-sm" name="taskEndDate" value="${data.endDate || ''}" ${data.endDateIsCalculated ? 'readonly' : ''}></td>
@@ -611,21 +629,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const parentTask = taskViewStack.length > 0 ? taskViewStack[taskViewStack.length - 1] : null;
         let tasksToShow;
 
+        const breadcrumbEl = document.getElementById('breadcrumb-title');
+
         if (parentTask) {
             // Vista de sub-tareas
             tasksToShow = allTasksCache.filter(task => 
                 task.dependencies.some(dep => dep.id === parentTask.taskId)
             );
-            document.getElementById('task-list-title').textContent = `Sub-tareas de: ${parentTask.taskName}`;
-            document.getElementById('navigate-up-btn').style.display = 'block';
+            
+            if (breadcrumbEl) {
+                const prefix = taskViewStack.length > 1 ? '... / ' : '';
+                breadcrumbEl.textContent = `/ ${prefix}${parentTask.taskName}`;
+                breadcrumbEl.classList.add('clickable-title');
+                breadcrumbEl.style.display = 'inline';
+            }
+
         } else {
             // Vista de nivel superior (tareas sin dependencias o cuyas dependencias no están en la lista)
             const allTaskIds = new Set(allTasksCache.map(t => t.id));
             tasksToShow = allTasksCache.filter(task => 
                 task.dependencies.length === 0 || task.dependencies.every(dep => !allTaskIds.has(dep.id))
             );
-            document.getElementById('task-list-title').textContent = 'Lista de Tareas';
-            document.getElementById('navigate-up-btn').style.display = 'none';
+            if (breadcrumbEl) {
+                breadcrumbEl.textContent = '';
+                breadcrumbEl.classList.remove('clickable-title');
+                breadcrumbEl.style.display = 'none';
+            }
         }
 
         renderTaskRows(tasksToShow);
@@ -649,9 +678,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 durationCell.textContent = '--';
             }
 
-            // Actualizar contador de sub-tareas
+            // Actualizar contador de sub-tareas y desactivar si es 0
             const subtaskBtn = newRow.querySelector('.subtask-count-btn');
-            subtaskBtn.textContent = subtaskCounts[taskData.id] || 0;
+            const count = subtaskCounts[taskData.id] || 0;
+            subtaskBtn.textContent = count;
+            if (count === 0) {
+                subtaskBtn.disabled = true;
+            }
 
             tasksTbody.appendChild(newRow);
         });

@@ -150,8 +150,12 @@
                     <div class="tab-pane fade show active p-3 border rounded" id="tasks" role="tabpanel" aria-labelledby="tasks-tab-btn">
                         <div class="card">
                             <div class="card-header fw-bold d-flex justify-content-between align-items-center">
-                                <span>Lista de Tareas</span>
+                                <div>
+                                    <span id="task-list-title">Lista de Tareas</span>
+                                    <span id="breadcrumb-title" class="text-muted fw-normal ms-2"></span>
+                                </div>
                             </div>
+
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-sm">
@@ -162,6 +166,7 @@
                                                 <th style="width: 25%;">Tarea</th>
                                                 <th style="width: 7%;">Valor</th>
                                                 <th style="width: 5%;">Pred.</th>
+                                                <th style="width: 5%;">Sub.T</th>
                                                 <th style="width: 10%;">Fecha Inicio</th>
                                                 <th style="width: 10%;">Fecha Fin</th>
                                                 <th style="width: 8%;">Duración (días)</th>

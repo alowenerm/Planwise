@@ -1,267 +1,555 @@
 {
-  "taskListName": "Proyecto Villa Amanecer",
+  "taskListName": "Nuevo Proyecto Inmobiliario",
   "tasks": [
     {
-      "id": "task-01",
-      "name": "Estudio de Cabida y Viabilidad",
-      "responsible": "Arquitecto Jefe",
-      "value": 150,
+      "id": "task-1",
+      "name": "Fase 1: Planificación y Diseño",
+      "responsible": "director.proyecto@constructora.com",
+      "value": 50000,
       "dependencies": [],
-      "startDate": "2024-08-01",
-      "endDate": "2024-08-15",
-      "status": "Completada",
+      "startDate": "2024-11-01",
+      "endDate": "2024-12-31",
+      "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-02",
-      "name": "Diseño Arquitectónico y Planos",
-      "responsible": "Arquitecto Jefe",
-      "value": 400,
-      "dependencies": [
-        { "id": "task-01", "type": "Fin-Inicio (FI)" }
-      ],
-      "startDate": "",
-      "endDate": "2024-09-30",
-      "status": "Completada",
-      "priority": "Alta"
-    },
-    {
-      "id": "task-03",
-      "name": "Obtención de Permisos de Construcción",
-      "responsible": "Gestor Legal",
-      "value": 250,
-      "dependencies": [
-        { "id": "task-02", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-1-1",
+      "name": "Diseño Arquitectónico",
+      "responsible": "arquitecto.jefe@constructora.com",
+      "value": 20000,
+      "dependencies": [{"id": "task-1", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
       "endDate": "2024-11-30",
-      "status": "En Progreso",
+      "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-04",
-      "name": "Limpieza y Nivelación del Terreno",
-      "responsible": "Jefe de Obra",
-      "value": 300,
-      "dependencies": [
-        { "id": "task-03", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-1-1-1",
+      "name": "Elaboración de Planos Generales",
+      "responsible": "dibujante.cad@constructora.com",
+      "value": 10000,
+      "dependencies": [{"id": "task-1-1", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
-      "endDate": "2024-12-15",
+      "endDate": "2024-11-20",
       "status": "Pendiente",
       "priority": "Media"
     },
     {
-      "id": "task-05",
-      "name": "Excavaciones y Cimientos",
-      "responsible": "Jefe de Obra",
-      "value": 800,
-      "dependencies": [
-        { "id": "task-04", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-1-1-2",
+      "name": "Creación de Renders y Maqueta 3D",
+      "responsible": "visualizador.3d@externo.com",
+      "value": 10000,
+      "dependencies": [{"id": "task-1-1", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
-      "endDate": "2025-01-31",
+      "endDate": "2024-11-30",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-1-2",
+      "name": "Ingeniería de Especialidades",
+      "responsible": "ing.coordinador@constructora.com",
+      "value": 20000,
+      "dependencies": [{"id": "task-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2024-12-15",
       "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-06",
-      "name": "Construcción de Estructura Principal (Obra Gruesa)",
-      "responsible": "Jefe de Obra",
-      "value": 2500,
-      "dependencies": [
-        { "id": "task-05", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-1-2-1",
+      "name": "Cálculo Estructural",
+      "responsible": "ing.estructural@externo.com",
+      "value": 12000,
+      "dependencies": [{"id": "task-1-2", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
+      "endDate": "2024-12-10",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-1-2-2",
+      "name": "Diseño de Redes Eléctricas y Sanitarias",
+      "responsible": "ing.electrico@externo.com",
+      "value": 8000,
+      "dependencies": [{"id": "task-1-2", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2024-12-10",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-1-3",
+      "name": "Presupuesto y Planificación Financiera",
+      "responsible": "analista.financiero@constructora.com",
+      "value": 10000,
+      "dependencies": [{"id": "task-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2024-12-31",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-1-3-1",
+      "name": "Cotización de Materiales Clave",
+      "responsible": "jefe.adquisiciones@constructora.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-1-3", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2024-12-20",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-1-3-2",
+      "name": "Elaboración de Flujo de Caja",
+      "responsible": "analista.financiero@constructora.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-1-3-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2024-12-31",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-2",
+      "name": "Fase 2: Permisos y Licitación",
+      "responsible": "gestor.legal@constructora.com",
+      "value": 25000,
+      "dependencies": [],
+      "startDate": "2025-01-02",
       "endDate": "2025-03-31",
       "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-07",
-      "name": "Instalación de Losa y Techos",
-      "responsible": "Jefe de Obra",
-      "value": 1200,
-      "dependencies": [
-        { "id": "task-06", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-2-1",
+      "name": "Gestión de Permiso de Edificación",
+      "responsible": "gestor.legal@constructora.com",
+      "value": 15000,
+      "dependencies": [{"id": "task-2", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-03-15",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-2-1-1",
+      "name": "Ingreso de Expediente a Municipalidad",
+      "responsible": "asistente.legal@constructora.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-2-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-01-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-2-1-2",
+      "name": "Seguimiento y Corrección de Observaciones",
+      "responsible": "gestor.legal@constructora.com",
+      "value": 10000,
+      "dependencies": [{"id": "task-2-1-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2025-03-15",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-2-2",
+      "name": "Licitación de Contratistas",
+      "responsible": "jefe.adquisiciones@constructora.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-2", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-03-20",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-2-2-1",
+      "name": "Preparación de Bases de Licitación",
+      "responsible": "jefe.adquisiciones@constructora.com",
+      "value": 2500,
+      "dependencies": [{"id": "task-2-2", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-03-01",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-2-2-2",
+      "name": "Recepción y Evaluación de Ofertas",
+      "responsible": "comite.evaluador@constructora.com",
+      "value": 2500,
+      "dependencies": [{"id": "task-2-2-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2025-03-20",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-2-3",
+      "name": "Contratación de Proveedores Clave",
+      "responsible": "jefe.adquisiciones@constructora.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-2", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-03-31",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-2-3-1",
+      "name": "Negociación de Contratos de Suministro",
+      "responsible": "jefe.adquisiciones@constructora.com",
+      "value": 2500,
+      "dependencies": [{"id": "task-2-3", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-03-25",
+      "status": "Pendiente",
+      "priority": "Baja"
+    },
+    {
+      "id": "task-2-3-2",
+      "name": "Firma de Órdenes de Compra",
+      "responsible": "jefe.adquisiciones@constructora.com",
+      "value": 2500,
+      "dependencies": [{"id": "task-2-3-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2025-03-31",
+      "status": "Pendiente",
+      "priority": "Baja"
+    },
+    {
+      "id": "task-3",
+      "name": "Fase 3: Obra Gruesa",
+      "responsible": "jefe.obra@constructora.com",
+      "value": 750000,
+      "dependencies": [],
+      "startDate": "2025-04-01",
+      "endDate": "2025-09-30",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-3-1",
+      "name": "Obras Preliminares",
+      "responsible": "jefe.obra@constructora.com",
+      "value": 50000,
+      "dependencies": [{"id": "task-3", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
       "endDate": "2025-04-30",
       "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-08",
-      "name": "Instalación de Muros Exteriores y Aislación",
-      "responsible": "Contratista Exterior",
-      "value": 900,
-      "dependencies": [
-        { "id": "task-07", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-3-1-1",
+      "name": "Instalación de Faenas y Cierres",
+      "responsible": "capataz.obra@constructora.com",
+      "value": 25000,
+      "dependencies": [{"id": "task-3-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-04-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-3-1-2",
+      "name": "Excavaciones y Movimiento de Tierra",
+      "responsible": "operador.maquinaria@externo.com",
+      "value": 25000,
+      "dependencies": [{"id": "task-3-1-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2025-04-30",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-3-2",
+      "name": "Fundaciones",
+      "responsible": "jefe.obra@constructora.com",
+      "value": 200000,
+      "dependencies": [{"id": "task-3-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2025-06-15",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-3-2-1",
+      "name": "Trazado y Enfierradura",
+      "responsible": "capataz.obra@constructora.com",
+      "value": 100000,
+      "dependencies": [{"id": "task-3-2", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
       "endDate": "2025-05-31",
       "status": "Pendiente",
       "priority": "Media"
     },
     {
-      "id": "task-09",
-      "name": "Instalación de Ventanas y Puertas Exteriores",
-      "responsible": "Contratista Exterior",
-      "value": 750,
-      "dependencies": [
-        { "id": "task-08", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-3-2-2",
+      "name": "Hormigonado de Cimientos",
+      "responsible": "capataz.obra@constructora.com",
+      "value": 100000,
+      "dependencies": [{"id": "task-3-2-1", "type": "Fin-Inicio (FI)"}],
       "startDate": "",
       "endDate": "2025-06-15",
       "status": "Pendiente",
-      "priority": "Media"
+      "priority": "Alta"
     },
     {
-      "id": "task-10",
-      "name": "Instalación de Redes Sanitarias (Agua/Alcantarillado)",
-      "responsible": "Contratista Sanitario",
-      "value": 1100,
-      "dependencies": [
-        { "id": "task-07", "type": "Inicio-Inicio (II)" }
-      ],
+      "id": "task-3-3",
+      "name": "Estructura Principal",
+      "responsible": "jefe.obra@constructora.com",
+      "value": 500000,
+      "dependencies": [{"id": "task-3-2", "type": "Fin-Inicio (FI)"}],
       "startDate": "",
-      "endDate": "2025-05-20",
+      "endDate": "2025-09-30",
       "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-11",
-      "name": "Instalación de Red Eléctrica Principal",
-      "responsible": "Contratista Eléctrico",
-      "value": 1300,
-      "dependencies": [
-        { "id": "task-07", "type": "Inicio-Inicio (II)" }
-      ],
+      "id": "task-3-3-1",
+      "name": "Levantamiento de Muros y Pilares",
+      "responsible": "capataz.obra@constructora.com",
+      "value": 250000,
+      "dependencies": [{"id": "task-3-3", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
-      "endDate": "2025-05-25",
+      "endDate": "2025-08-15",
       "status": "Pendiente",
       "priority": "Alta"
     },
     {
-      "id": "task-12",
-      "name": "Tabiquería Interior (Muros Secos)",
-      "responsible": "Contratista Interior",
-      "value": 600,
-      "dependencies": [
-        { "id": "task-09", "type": "Fin-Inicio (FI)" },
-        { "id": "task-10", "type": "Fin-Inicio (FI)" },
-        { "id": "task-11", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-3-3-2",
+      "name": "Construcción de Losas y Techumbre",
+      "responsible": "capataz.obra@constructora.com",
+      "value": 250000,
+      "dependencies": [{"id": "task-3-3-1", "type": "Fin-Inicio (FI)"}],
       "startDate": "",
-      "endDate": "2025-07-15",
+      "endDate": "2025-09-30",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-4",
+      "name": "Fase 4: Instalaciones y Terminaciones",
+      "responsible": "jefe.terminaciones@constructora.com",
+      "value": 600000,
+      "dependencies": [],
+      "startDate": "2025-10-01",
+      "endDate": "2026-02-28",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-4-1",
+      "name": "Instalaciones Interiores",
+      "responsible": "ing.coordinador@constructora.com",
+      "value": 250000,
+      "dependencies": [{"id": "task-4", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-12-31",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-4-1-1",
+      "name": "Tendido de Redes Eléctricas y Corrientes Débiles",
+      "responsible": "contratista.electrico@externo.com",
+      "value": 125000,
+      "dependencies": [{"id": "task-4-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2025-11-30",
       "status": "Pendiente",
       "priority": "Media"
     },
     {
-      "id": "task-13",
-      "name": "Cableado Eléctrico y Cajas de Conexión",
-      "responsible": "Contratista Eléctrico",
-      "value": 550,
-      "dependencies": [
-        { "id": "task-12", "type": "Inicio-Inicio (II)" }
-      ],
+      "id": "task-4-1-2",
+      "name": "Instalación de Tuberías de Agua y Gas",
+      "responsible": "contratista.sanitario@externo.com",
+      "value": 125000,
+      "dependencies": [{"id": "task-4-1", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
-      "endDate": "2025-07-31",
+      "endDate": "2025-11-30",
       "status": "Pendiente",
       "priority": "Media"
     },
     {
-      "id": "task-14",
-      "name": "Instalación de Tuberías Internas y Grifería",
-      "responsible": "Contratista Sanitario",
-      "value": 450,
-      "dependencies": [
-        { "id": "task-12", "type": "Inicio-Inicio (II)" }
-      ],
+      "id": "task-4-2",
+      "name": "Terminaciones Interiores",
+      "responsible": "jefe.terminaciones@constructora.com",
+      "value": 250000,
+      "dependencies": [{"id": "task-4-1", "type": "Fin-Inicio (FI)"}],
       "startDate": "",
-      "endDate": "2025-07-31",
+      "endDate": "2026-02-15",
       "status": "Pendiente",
       "priority": "Media"
     },
     {
-      "id": "task-15",
-      "name": "Pintura y Acabados de Muros",
-      "responsible": "Pintor",
-      "value": 700,
-      "dependencies": [
-        { "id": "task-13", "type": "Fin-Inicio (FI)" },
-        { "id": "task-14", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-4-2-1",
+      "name": "Instalación de Tabiquería y Aislación",
+      "responsible": "contratista.tabiques@externo.com",
+      "value": 125000,
+      "dependencies": [{"id": "task-4-2", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
-      "endDate": "2025-08-31",
+      "endDate": "2026-01-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-4-2-2",
+      "name": "Pintura y Revestimientos de Muros",
+      "responsible": "contratista.pintura@externo.com",
+      "value": 125000,
+      "dependencies": [{"id": "task-4-2-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2026-02-15",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-4-3",
+      "name": "Acabados Finales",
+      "responsible": "jefe.terminaciones@constructora.com",
+      "value": 100000,
+      "dependencies": [{"id": "task-4-2", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2026-02-28",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-4-3-1",
+      "name": "Instalación de Pisos y Guardapolvos",
+      "responsible": "contratista.pisos@externo.com",
+      "value": 50000,
+      "dependencies": [{"id": "task-4-3", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2026-02-20",
       "status": "Pendiente",
       "priority": "Baja"
     },
     {
-      "id": "task-16",
-      "name": "Instalación de Pisos y Revestimientos",
-      "responsible": "Contratista Interior",
-      "value": 1000,
-      "dependencies": [
-        { "id": "task-15", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-4-3-2",
+      "name": "Instalación de Muebles y Artefactos",
+      "responsible": "contratista.muebles@externo.com",
+      "value": 50000,
+      "dependencies": [{"id": "task-4-3-1", "type": "Fin-Inicio (FI)"}],
       "startDate": "",
-      "endDate": "2025-09-20",
-      "status": "Pendiente",
-      "priority": "Media"
-    },
-    {
-      "id": "task-17",
-      "name": "Instalación de Muebles de Cocina y Baño",
-      "responsible": "Contratista Interior",
-      "value": 1500,
-      "dependencies": [
-        { "id": "task-16", "type": "Fin-Inicio (FI)" }
-      ],
-      "startDate": "",
-      "endDate": "2025-10-10",
-      "status": "Pendiente",
-      "priority": "Media"
-    },
-    {
-      "id": "task-18",
-      "name": "Instalación de Artefactos Eléctricos y Lámparas",
-      "responsible": "Contratista Eléctrico",
-      "value": 400,
-      "dependencies": [
-        { "id": "task-17", "type": "Fin-Inicio (FI)" }
-      ],
-      "startDate": "",
-      "endDate": "2025-10-20",
+      "endDate": "2026-02-28",
       "status": "Pendiente",
       "priority": "Baja"
     },
     {
-      "id": "task-19",
-      "name": "Paisajismo y Obras Exteriores",
-      "responsible": "Paisajista",
-      "value": 850,
-      "dependencies": [
-        { "id": "task-09", "type": "Fin-Inicio (FI)" }
-      ],
+      "id": "task-5",
+      "name": "Fase 5: Cierre y Entrega",
+      "responsible": "director.proyecto@constructora.com",
+      "value": 30000,
+      "dependencies": [],
+      "startDate": "2026-03-01",
+      "endDate": "2026-04-30",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-5-1",
+      "name": "Recepción Municipal y Certificaciones",
+      "responsible": "gestor.legal@constructora.com",
+      "value": 15000,
+      "dependencies": [{"id": "task-5", "type": "Inicio-Inicio (II)"}],
       "startDate": "",
-      "endDate": "2025-10-30",
+      "endDate": "2026-03-31",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-5-1-1",
+      "name": "Obtención de Recepción Final de Obras",
+      "responsible": "gestor.legal@constructora.com",
+      "value": 10000,
+      "dependencies": [{"id": "task-5-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2026-03-25",
+      "status": "Pendiente",
+      "priority": "Alta"
+    },
+    {
+      "id": "task-5-1-2",
+      "name": "Certificaciones de Instalaciones (SEC, etc.)",
+      "responsible": "ing.coordinador@constructora.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-5-1", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2026-03-25",
       "status": "Pendiente",
       "priority": "Media"
     },
     {
-      "id": "task-20",
-      "name": "Limpieza Final y Entrega de Obra",
-      "responsible": "Jefe de Obra",
-      "value": 200,
-      "dependencies": [
-        { "id": "task-18", "type": "Fin-Fin (FF)" },
-        { "id": "task-19", "type": "Fin-Fin (FF)" }
-      ],
-      "startDate": "2025-10-21",
-      "endDate": "",
+      "id": "task-5-2",
+      "name": "Proceso de Venta y Escrituración",
+      "responsible": "agente.ventas@inmobiliaria.com",
+      "value": 10000,
+      "dependencies": [{"id": "task-5-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2026-04-30",
       "status": "Pendiente",
-      "priority": "Alta"
+      "priority": "Media"
+    },
+    {
+      "id": "task-5-2-1",
+      "name": "Coordinación con Notaría y Banco",
+      "responsible": "agente.ventas@inmobiliaria.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-5-2", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2026-04-20",
+      "status": "Pendiente",
+      "priority": "Baja"
+    },
+    {
+      "id": "task-5-2-2",
+      "name": "Firma de Escrituras por Clientes",
+      "responsible": "agente.ventas@inmobiliaria.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-5-2-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2026-04-30",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-5-3",
+      "name": "Entrega de Unidades y Postventa",
+      "responsible": "postventa@inmobiliaria.com",
+      "value": 5000,
+      "dependencies": [{"id": "task-5-2", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2026-04-30",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-5-3-1",
+      "name": "Inspección de Entrega con Clientes",
+      "responsible": "postventa@inmobiliaria.com",
+      "value": 2500,
+      "dependencies": [{"id": "task-5-3", "type": "Inicio-Inicio (II)"}],
+      "startDate": "",
+      "endDate": "2026-04-25",
+      "status": "Pendiente",
+      "priority": "Media"
+    },
+    {
+      "id": "task-5-3-2",
+      "name": "Activación de Garantías y Manual de Usuario",
+      "responsible": "postventa@inmobiliaria.com",
+      "value": 2500,
+      "dependencies": [{"id": "task-5-3-1", "type": "Fin-Inicio (FI)"}],
+      "startDate": "",
+      "endDate": "2026-04-30",
+      "status": "Pendiente",
+      "priority": "Baja"
     }
   ]
 }

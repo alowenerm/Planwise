@@ -259,3 +259,15 @@ input[readonly] {
     z-index: 9;
     background-color: #f8f9fa;
 }
+
+/* --- ESTILOS PARA TÍTULO NAVEGABLE --- */
+.clickable-title {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: #6c757d;
+}
+.clickable-title:hover {
+    color: #0d6efd; /* Bootstrap primary blue */
+    text-decoration-color: #0d6efd;
+}
