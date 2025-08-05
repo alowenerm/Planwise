@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variables para la navegación de tareas
     let allTasksCache = []; // Siempre contiene TODAS las tareas del proyecto
     let taskViewStack = []; // Pila para navegar: [{taskId, taskName}]
+    let isExpandedView = false; // Estado para la vista expandida
 
     const debounce = (func, delay) => {
         let timeoutId;
@@ -120,8 +121,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         tasksTbody.addEventListener('click', (e) => {
             const subtaskBtn = e.target.closest('.subtask-count-btn');
-            if (subtaskBtn && !subtaskBtn.disabled) {
-                navigateToSubtasks(subtaskBtn.dataset.taskId);
+            const predBtn = e.target.closest('.dependency-cell button');
+
+            if (isExpandedView) {
+                const targetBtn = subtaskBtn || predBtn;
+                if (targetBtn && !targetBtn.disabled) {
+                    // Si el botón es de dependencias, prevenimos que abra el modal
+                    if (predBtn) e.preventDefault();
+                    
+                    isExpandedView = false; // Colapsar la vista
+                    navigateToSubtasks(targetBtn.dataset.taskId); // Navegar a las sub-tareas del item clickeado
+                }
+            } else {
+                // Navegación jerárquica normal solo para el botón de sub-tareas
+                if (subtaskBtn && !subtaskBtn.disabled) {
+                    navigateToSubtasks(subtaskBtn.dataset.taskId);
+                }
             }
         });
 
@@ -132,18 +147,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     navigateUp();
                 }
             });
-        } else {
-            console.warn("El elemento 'breadcrumb-title' no se encontró. Verifica que el HTML esté actualizado.");
         }
 
-        // --- NUEVO: Listener para actualizar el Gantt al mostrar la pestaña ---
+        const toggleExpandBtn = document.getElementById('toggle-expand-btn');
+        if (toggleExpandBtn) {
+            toggleExpandBtn.addEventListener('click', () => {
+                isExpandedView = !isExpandedView;
+                // --- CORRECCIÓN: Ocultar el tooltip para que no se quede pegado ---
+                bootstrap.Tooltip.getInstance(toggleExpandBtn)?.hide();
+                updateTaskView();
+            });
+        }
+
         const ganttTabBtn = document.getElementById('gantt-tab-btn');
         if (ganttTabBtn) {
             ganttTabBtn.addEventListener('shown.bs.tab', () => {
                 renderGanttChart(allTasksCache);
             });
         }
-        // --- FIN DEL NUEVO BLOQUE ---
 
         document.getElementById('add-task').addEventListener('click', () => { 
             addTaskRow(); 
@@ -169,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentTaskListId = null;
         currentUserRole = 'owner';
         lastKnownServerState = null;
+        isExpandedView = false; // Resetear vista
         if (window.location.search !== "") history.pushState(null, '', window.location.pathname);
         setReadOnly(false);
         document.getElementById('share-task-list-btn').style.display = 'none';
@@ -275,23 +297,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updateSaveStatus('Cargando lista...');
         unsubscribeTaskList = db.collection('tareas').doc(taskListId).onSnapshot((doc) => {
-            if (doc.exists) {
-                const serverData = doc.data();
-                const localData = getTasksData();
-                if (JSON.stringify(serverData.tasks) === JSON.stringify(localData.tasks) && serverData.taskListName === localData.taskListName) {
-                     updateHeaderKPIs(serverData.tasks);
-                    return;
-                }
-                
-                lastKnownServerState = JSON.stringify(serverData); 
-                updateSaveStatus('Actualizando...');
-                loadTasksFromJSON(serverData);
-                updateSaveStatus('Actualizado');
-            } else {
-                alert("La lista ya no existe.");
+            // Si el documento no existe, cargar una nueva lista.
+            if (!doc.exists) {
+                alert("La lista ya no existe o no tienes acceso.");
                 if (unsubscribeTaskList) unsubscribeTaskList();
                 loadNewTaskListState(false);
+                return;
             }
+
+            // Si el cambio proviene de una escritura local, ignorarlo para no reiniciar la UI.
+            if (doc.metadata.hasPendingWrites) {
+                return;
+            }
+
+            // Si el cambio es remoto (de otro usuario), actualizar los datos suavemente.
+            console.log("Remote change detected, refreshing data...");
+            const serverData = doc.data();
+            document.getElementById('taskListName').value = serverData.taskListName || 'Nueva Lista';
+            allTasksCache = serverData.tasks || [];
+            
+            // Volver a calcular y dibujar la UI sin reiniciar el estado de la vista.
+            runGanttCalculationAndUpdateUI();
+            updateSaveStatus('Lista actualizada');
+
         }, error => {
             console.error("Error escuchando la lista:", error);
             updateSaveStatus('Error de conexión', true);
@@ -474,19 +502,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentTasks = getTasksData().tasks;
         const calculatedTasks = calculateTaskDates(currentTasks);
         
-        // Actualizamos el cache con las tareas calculadas
         allTasksCache = calculatedTasks;
-
-        // Actualizamos la vista de la tabla (puede estar filtrada)
         updateTaskView();
-
-        // Actualizamos los KPIs y el Gantt con el conjunto completo de tareas
         updateHeaderKPIs(calculatedTasks);
-        renderGanttChart(calculatedTasks);
+        
+        // Solo renderizar el Gantt si la pestaña está activa, para evitar errores.
+        if (document.getElementById('gantt-tab-btn').classList.contains('active')) {
+            renderGanttChart(calculatedTasks);
+        }
     }
 
     function updateHeaderKPIs(tasks) {
-        // KPIs de estado
         const totalTasks = tasks.length;
         const completedTasks = tasks.filter(t => t.status === 'Completada');
         document.querySelector('#kpi1 .header-kpi-value').textContent = totalTasks;
@@ -495,7 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#kpi4 .header-kpi-value').textContent = completedTasks.length;
         document.querySelector('#kpi5 .header-kpi-value').textContent = tasks.reduce((sum, task) => sum + (Number(task.value) || 0), 0).toLocaleString('es-CL');
         
-        // KPIs de proyecto
         const validStartDates = tasks.map(t => t.startDate).filter(d => d).map(d => new Date(d));
         const validEndDates = tasks.map(t => t.endDate).filter(d => d).map(d => new Date(d));
 
@@ -526,14 +551,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const taskId = data.id || crypto.randomUUID();
         newRow.dataset.taskId = taskId;
         
-        // Si estamos en una vista de sub-tareas, la nueva tarea depende de la tarea padre actual
-        const parentTask = taskViewStack.length > 0 ? taskViewStack[taskViewStack.length - 1] : null;
+        const parentTask = taskViewStack.length > 0 && !isExpandedView ? taskViewStack[taskViewStack.length - 1] : null;
         const dependencies = data.dependencies || (parentTask ? [{ id: parentTask.taskId, type: 'Fin-Inicio (FI)' }] : []);
         
         newRow.dataset.dependencies = JSON.stringify(dependencies);
 
         const dependenciesCount = dependencies.length;
         const dependencyButtonText = dependenciesCount;
+        
+        const predButtonAttrs = isExpandedView ? '' : 'data-bs-toggle="modal" data-bs-target="#dependencyModal"';
 
         newRow.innerHTML = `
             <td class="drag-handle"><i class="bi bi-grip-vertical"></i></td>
@@ -541,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <td><input type="text" class="form-control form-control-sm" name="taskName" value="${data.name || ''}"></td>
             <td><input type="number" class="form-control form-control-sm" name="taskValue" value="${data.value || 0}"></td>
             <td class="dependency-cell text-center">
-                <button type="button" class="btn btn-sm btn-light w-100" data-bs-toggle="modal" data-bs-target="#dependencyModal" data-task-id="${taskId}">
+                <button type="button" class="btn btn-sm btn-light w-100" ${predButtonAttrs} data-task-id="${taskId}">
                     ${dependencyButtonText}
                 </button>
             </td>
@@ -559,14 +585,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data.priority) newRow.querySelector('[name=taskPriority]').value = data.priority;
         
         newRow.querySelector('.remove-task-btn').addEventListener('click', () => {
-            // Eliminar la tarea del cache principal
             allTasksCache = allTasksCache.filter(t => t.id !== taskId);
             newRow.remove();
             runGanttCalculationAndUpdateUI();
             debouncedSaveToFirestore();
         });
 
-        // Si es una tarea nueva (sin datos), la añadimos al cache
         if (!data.id) {
             allTasksCache.push(getSingleTaskData(newRow));
         }
@@ -589,13 +613,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getTasksData() {
-        // Primero, actualizamos el cache con los datos visibles en el DOM
         const visibleTasksMap = new Map();
         tasksTbody.querySelectorAll('tr').forEach(row => {
             visibleTasksMap.set(row.dataset.taskId, getSingleTaskData(row));
         });
 
-        // Fusionamos los datos del DOM con el cache
         allTasksCache = allTasksCache.map(cachedTask => {
             return visibleTasksMap.get(cachedTask.id) || cachedTask;
         });
@@ -609,7 +631,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadTasksFromJSON(data) {
         document.getElementById('taskListName').value = data.taskListName || 'Nueva Lista';
         allTasksCache = data.tasks || [];
-        taskViewStack = []; // Reseteamos la navegación
+        taskViewStack = [];
+        isExpandedView = false;
         runGanttCalculationAndUpdateUI();
     }
 
@@ -630,32 +653,38 @@ document.addEventListener('DOMContentLoaded', function() {
         let tasksToShow;
 
         const breadcrumbEl = document.getElementById('breadcrumb-title');
+        const toggleBtn = document.getElementById('toggle-expand-btn');
+        const toggleBtnIcon = toggleBtn ? toggleBtn.querySelector('i') : null;
 
-        if (parentTask) {
-            // Vista de sub-tareas
-            tasksToShow = allTasksCache.filter(task => 
-                task.dependencies.some(dep => dep.id === parentTask.taskId)
-            );
-            
-            if (breadcrumbEl) {
-                const prefix = taskViewStack.length > 1 ? '... / ' : '';
-                breadcrumbEl.textContent = `/ ${prefix}${parentTask.taskName}`;
-                breadcrumbEl.classList.add('clickable-title');
-                breadcrumbEl.style.display = 'inline';
-            }
-
+        if (isExpandedView) {
+            tasksToShow = allTasksCache;
+            if (breadcrumbEl) breadcrumbEl.style.display = 'none';
+            if (toggleBtnIcon) toggleBtnIcon.className = 'bi bi-arrows-collapse';
+            if (toggleBtn) toggleBtn.setAttribute('data-bs-original-title', 'Colapsar vista');
         } else {
-            // Vista de nivel superior (tareas sin dependencias o cuyas dependencias no están en la lista)
-            const allTaskIds = new Set(allTasksCache.map(t => t.id));
-            tasksToShow = allTasksCache.filter(task => 
-                task.dependencies.length === 0 || task.dependencies.every(dep => !allTaskIds.has(dep.id))
-            );
-            if (breadcrumbEl) {
-                breadcrumbEl.textContent = '';
-                breadcrumbEl.classList.remove('clickable-title');
-                breadcrumbEl.style.display = 'none';
+            if (parentTask) {
+                tasksToShow = allTasksCache.filter(task => 
+                    task.dependencies.some(dep => dep.id === parentTask.taskId)
+                );
+                if (breadcrumbEl) {
+                    const prefix = taskViewStack.length > 1 ? '... / ' : '';
+                    breadcrumbEl.textContent = `/ ${prefix}${parentTask.taskName}`;
+                    breadcrumbEl.classList.add('clickable-title');
+                    breadcrumbEl.style.display = 'inline';
+                }
+            } else {
+                const allTaskIds = new Set(allTasksCache.map(t => t.id));
+                tasksToShow = allTasksCache.filter(task => 
+                    task.dependencies.length === 0 || task.dependencies.every(dep => !allTaskIds.has(dep.id))
+                );
+                if (breadcrumbEl) breadcrumbEl.style.display = 'none';
             }
+            if (toggleBtnIcon) toggleBtnIcon.className = 'bi bi-arrows-fullscreen';
+            if (toggleBtn) toggleBtn.setAttribute('data-bs-original-title', 'Expandir todo');
         }
+        
+        // Re-inicializar tooltips para el botón que cambió de título
+        if (toggleBtn) new bootstrap.Tooltip(toggleBtn);
 
         renderTaskRows(tasksToShow);
     }
@@ -667,7 +696,6 @@ document.addEventListener('DOMContentLoaded', function() {
         tasksToRender.forEach(taskData => {
             const newRow = addTaskRow(taskData);
             
-            // Actualizar duración
             const durationCell = newRow.querySelector('.duration-cell');
             if (taskData.startDate && taskData.endDate) {
                 const start = new Date(taskData.startDate);
@@ -678,7 +706,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 durationCell.textContent = '--';
             }
 
-            // Actualizar contador de sub-tareas y desactivar si es 0
             const subtaskBtn = newRow.querySelector('.subtask-count-btn');
             const count = subtaskCounts[taskData.id] || 0;
             subtaskBtn.textContent = count;
@@ -713,88 +740,115 @@ document.addEventListener('DOMContentLoaded', function() {
 
         modalEl.addEventListener('show.bs.modal', (event) => {
             const button = event.relatedTarget;
+            if (!button) return;
             currentEditingTaskId = button.getAttribute('data-task-id');
             populateDependencyModal(currentEditingTaskId);
         });
-
-        document.getElementById('save-dependencies-btn').addEventListener('click', saveDependencies);
     }
 
     function populateDependencyModal(editingTaskId) {
         const allTasks = getTasksData().tasks;
         const editingTask = allTasks.find(t => t.id === editingTaskId);
         const currentDependencies = editingTask.dependencies || [];
-
-        document.getElementById('dependency-task-name').textContent = editingTask.name || 'Tarea sin nombre';
-        const container = document.getElementById('dependency-modal-body-content');
-        container.innerHTML = '';
-
         const availableTasks = allTasks.filter(t => t.id !== editingTaskId);
 
-        if (availableTasks.length === 0) {
-            container.innerHTML = '<p class="text-muted">No hay otras tareas para establecer dependencias.</p>';
-            return;
-        }
+        document.getElementById('dependency-task-name').textContent = editingTask.name || 'Tarea sin nombre';
+        const searchInput = document.getElementById('dependency-search-input');
+        const checkedFilter = document.getElementById('dependency-checked-filter');
+        searchInput.value = '';
+        checkedFilter.checked = false;
 
-        const table = document.createElement('table');
-        table.className = 'table table-sm';
-        table.innerHTML = `<thead><tr><th style="width: 50px;"></th><th>Tarea</th><th>Tipo de Dependencia</th></tr></thead>`;
-        const tbody = document.createElement('tbody');
+        const renderList = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const onlyChecked = checkedFilter.checked;
+            const container = document.getElementById('dependency-modal-body-content');
+            container.innerHTML = '';
 
-        availableTasks.forEach(task => {
-            const dependency = currentDependencies.find(d => d.id === task.id);
-            const isChecked = !!dependency;
-            const dependencyType = dependency ? dependency.type : 'Fin-Inicio (FI)';
+            let filteredTasks = availableTasks;
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>
-                    <div class="form-check">
-                        <input class="form-check-input dependency-checkbox" type="checkbox" value="${task.id}" ${isChecked ? 'checked' : ''}>
-                    </div>
-                </td>
-                <td>${task.name || 'Tarea sin nombre'}</td>
-                <td>
-                    <select class="form-select form-select-sm dependency-type-select" ${!isChecked ? 'disabled' : ''}>
-                        <option value="Fin-Inicio (FI)" ${dependencyType === 'Fin-Inicio (FI)' ? 'selected' : ''}>Fin-Inicio (FI)</option>
-                        <option value="Inicio-Inicio (II)" ${dependencyType === 'Inicio-Inicio (II)' ? 'selected' : ''}>Inicio-Inicio (II)</option>
-                        <option value="Fin-Fin (FF)" ${dependencyType === 'Fin-Fin (FF)' ? 'selected' : ''}>Fin-Fin (FF)</option>
-                        <option value="Inicio-Fin (IF)" ${dependencyType === 'Inicio-Fin (IF)' ? 'selected' : ''}>Inicio-Fin (IF)</option>
-                    </select>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+            if (searchTerm) {
+                filteredTasks = filteredTasks.filter(task => task.name.toLowerCase().includes(searchTerm));
+            }
+            
+            const currentDependencyIds = new Set(currentDependencies.map(d => d.id));
+            if (onlyChecked) {
+                filteredTasks = filteredTasks.filter(task => currentDependencyIds.has(task.id));
+            }
 
-        table.appendChild(tbody);
-        container.appendChild(table);
+            if (filteredTasks.length === 0) {
+                container.innerHTML = '<p class="text-muted">No se encontraron tareas con los filtros aplicados.</p>';
+                return;
+            }
 
-        container.querySelectorAll('.dependency-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const select = e.target.closest('tr').querySelector('.dependency-type-select');
-                select.disabled = !e.target.checked;
+            const table = document.createElement('table');
+            table.className = 'table table-sm';
+            table.innerHTML = `<thead><tr><th style="width: 50px;"></th><th>Tarea</th><th>Tipo de Dependencia</th></tr></thead>`;
+            const tbody = document.createElement('tbody');
+
+            filteredTasks.forEach(task => {
+                const dependency = currentDependencies.find(d => d.id === task.id);
+                const isChecked = !!dependency;
+                const dependencyType = dependency ? dependency.type : 'Fin-Inicio (FI)';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input dependency-checkbox" type="checkbox" value="${task.id}" ${isChecked ? 'checked' : ''}>
+                        </div>
+                    </td>
+                    <td>${task.name || 'Tarea sin nombre'}</td>
+                    <td>
+                        <select class="form-select form-select-sm dependency-type-select" ${!isChecked ? 'disabled' : ''}>
+                            <option value="Fin-Inicio (FI)" ${dependencyType === 'Fin-Inicio (FI)' ? 'selected' : ''}>Fin-Inicio (FI)</option>
+                            <option value="Inicio-Inicio (II)" ${dependencyType === 'Inicio-Inicio (II)' ? 'selected' : ''}>Inicio-Inicio (II)</option>
+                            <option value="Fin-Fin (FF)" ${dependencyType === 'Fin-Fin (FF)' ? 'selected' : ''}>Fin-Fin (FF)</option>
+                            <option value="Inicio-Fin (IF)" ${dependencyType === 'Inicio-Fin (IF)' ? 'selected' : ''}>Inicio-Fin (IF)</option>
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(row);
             });
-        });
+
+            table.appendChild(tbody);
+            container.appendChild(table);
+
+            container.querySelectorAll('.dependency-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const select = e.target.closest('tr').querySelector('.dependency-type-select');
+                    select.disabled = !e.target.checked;
+                });
+            });
+        };
+
+        searchInput.oninput = renderList;
+        checkedFilter.onchange = renderList;
+        document.getElementById('save-dependencies-btn').onclick = saveDependencies;
+
+        renderList();
     }
 
     function saveDependencies() {
         const newDependencies = [];
-        document.querySelectorAll('#dependency-modal-body-content tbody tr').forEach(row => {
-            const checkbox = row.querySelector('.dependency-checkbox');
-            if (checkbox.checked) {
-                const typeSelect = row.querySelector('.dependency-type-select');
-                newDependencies.push({
-                    id: checkbox.value,
-                    type: typeSelect.value
-                });
-            }
+        document.querySelectorAll('#dependency-modal-body-content .dependency-checkbox:checked').forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const typeSelect = row.querySelector('.dependency-type-select');
+            newDependencies.push({
+                id: checkbox.value,
+                type: typeSelect.value
+            });
         });
+
+        const otherDependencies = (allTasksCache.find(t => t.id === currentEditingTaskId)?.dependencies || [])
+            .filter(dep => !document.querySelector(`#dependency-modal-body-content .dependency-checkbox[value="${dep.id}"]`));
+
+        const finalDependencies = [...otherDependencies, ...newDependencies];
 
         const taskRow = tasksTbody.querySelector(`tr[data-task-id="${currentEditingTaskId}"]`);
         if (taskRow) {
-            taskRow.dataset.dependencies = JSON.stringify(newDependencies);
+            taskRow.dataset.dependencies = JSON.stringify(finalDependencies);
             const button = taskRow.querySelector('.dependency-cell button');
-            button.textContent = newDependencies.length;
+            button.textContent = finalDependencies.length;
         }
 
         dependencyModalInstance.hide();

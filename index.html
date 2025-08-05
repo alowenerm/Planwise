@@ -149,11 +149,14 @@
                     <!-- PESTAÑA TAREAS -->
                     <div class="tab-pane fade show active p-3 border rounded" id="tasks" role="tabpanel" aria-labelledby="tasks-tab-btn">
                         <div class="card">
-                            <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                        <div class="card-header fw-bold d-flex justify-content-between align-items-center">
                                 <div>
                                     <span id="task-list-title">Lista de Tareas</span>
                                     <span id="breadcrumb-title" class="text-muted fw-normal ms-2"></span>
                                 </div>
+                                <button id="toggle-expand-btn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Expandir todo">
+                                    <i class="bi bi-arrows-fullscreen"></i>
+                                </button>
                             </div>
 
                             <div class="card-body">
@@ -254,6 +257,13 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
+            <div class="d-flex gap-3 p-2 border-bottom mb-3 align-items-center">
+                <input type="text" id="dependency-search-input" class="form-control form-control-sm" placeholder="Filtrar tareas...">
+                <div class="form-check form-switch pt-1 text-nowrap">
+                    <input class="form-check-input" type="checkbox" id="dependency-checked-filter">
+                    <label class="form-check-label" for="dependency-checked-filter">Marcadas</label>
+                </div>
+            </div>
             <div id="dependency-modal-body-content">
               <p class="text-muted">Cargando tareas disponibles...</p>
             </div>
