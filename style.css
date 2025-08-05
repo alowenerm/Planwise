@@ -13,7 +13,7 @@ tfoot {
     background-color: #f8f9fa; 
 }
 
-/* --- ESTILOS DE CABECERA Y KPIs --- */
+/* --- ESTILOS DE CABECERA У KPIs --- */
 .header-kpi { 
     text-align: center; 
     padding: 0.3rem 0.6rem; 
@@ -222,10 +222,40 @@ input[readonly] {
 
 /* --- ESTILOS PARA GRÁFICO FRAPPE GANTT --- */
 .gantt .bar-wrapper.task-completed .bar {
-    fill: #e0e0e0; /* Relleno gris claro para tareas completadas */
+    fill: rgba(25, 135, 84, 0.3); /* Relleno verde claro semitransparente */
 }
+.gantt .bar-wrapper.task-completed .bar-label {
+    fill: #111; /* Texto negro para tareas completadas */
+}
+.gantt .bar-wrapper.task-completed .bar-progress {
+    fill: rgba(25, 135, 84, 0.6); /* Verde más oscuro para la barra de progreso */
+}
+
 .gantt .bar-wrapper.task-pending .bar {
     fill: transparent; /* Fondo transparente */
     stroke: #b0b0b0;   /* Borde gris claro */
     stroke-width: 1;
+}
+.gantt .bar-wrapper.task-pending .bar-label {
+    fill: #555; /* Texto gris para tareas pendientes */
+}
+
+/* Estilo para la línea de "Hoy" */
+.gantt .today-highlight {
+    stroke: #dc3545; /* Color rojo bootstrap */
+    stroke-width: 2;
+}
+
+/* Estilos para cabecera fija (sticky) */
+#gantt .card-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #fff;
+}
+.gantt-container .gantt-header {
+    position: sticky;
+    top: 58px; /* Altura del card-header */
+    z-index: 9;
+    background-color: #f8f9fa;
 }

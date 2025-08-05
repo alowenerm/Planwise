@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let dependencyModalInstance = null;
     let currentEditingTaskId = null;
     
+    // Variables para la navegación de tareas
+    let allTasksCache = []; // Siempre contiene TODAS las tareas del proyecto
+    let taskViewStack = []; // Pila para navegar: [{taskId, taskName}]
+
     const debounce = (func, delay) => {
         let timeoutId;
         return function(...args) {
@@ -113,6 +117,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             debouncedSaveToFirestore();
         });
+
+        tasksTbody.addEventListener('click', (e) => {
+            const subtaskBtn = e.target.closest('.subtask-count-btn');
+            if (subtaskBtn) {
+                navigateToSubtasks(subtaskBtn.dataset.taskId);
+            }
+        });
+
+        document.getElementById('navigate-up-btn').addEventListener('click', navigateUp);
 
         document.getElementById('add-task').addEventListener('click', () => { 
             addTaskRow(); 
@@ -442,32 +455,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function runGanttCalculationAndUpdateUI() {
         const currentTasks = getTasksData().tasks;
         const calculatedTasks = calculateTaskDates(currentTasks);
+        
+        // Actualizamos el cache con las tareas calculadas
+        allTasksCache = calculatedTasks;
 
-        calculatedTasks.forEach(task => {
-            const row = tasksTbody.querySelector(`tr[data-task-id="${task.id}"]`);
-            if (row) {
-                const startDateInput = row.querySelector('[name="taskStartDate"]');
-                const endDateInput = row.querySelector('[name="taskEndDate"]');
-                const durationCell = row.querySelector('.duration-cell');
+        // Actualizamos la vista de la tabla (puede estar filtrada)
+        updateTaskView();
 
-                startDateInput.value = task.startDate;
-                startDateInput.readOnly = task.startDateIsCalculated;
-
-                endDateInput.value = task.endDate;
-                endDateInput.readOnly = task.endDateIsCalculated;
-
-                if (task.startDate && task.endDate) {
-                    const start = new Date(task.startDate);
-                    const end = new Date(task.endDate);
-                    const duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                    durationCell.textContent = duration;
-                } else {
-                    durationCell.textContent = '--';
-                }
-            }
-        });
+        // Actualizamos los KPIs y el Gantt con el conjunto completo de tareas
         updateHeaderKPIs(calculatedTasks);
-        renderGanttChart(calculatedTasks); // Actualizar el gráfico
+        renderGanttChart(calculatedTasks);
     }
 
     function updateHeaderKPIs(tasks) {
@@ -511,70 +508,168 @@ document.addEventListener('DOMContentLoaded', function() {
         const taskId = data.id || crypto.randomUUID();
         newRow.dataset.taskId = taskId;
         
-        newRow.dataset.dependencies = JSON.stringify(data.dependencies || []);
+        // Si estamos en una vista de sub-tareas, la nueva tarea depende de la tarea padre actual
+        const parentTask = taskViewStack.length > 0 ? taskViewStack[taskViewStack.length - 1] : null;
+        const dependencies = data.dependencies || (parentTask ? [{ id: parentTask.taskId, type: 'Fin-Inicio (FI)' }] : []);
+        
+        newRow.dataset.dependencies = JSON.stringify(dependencies);
 
-        const dependenciesCount = (data.dependencies || []).length;
+        const dependenciesCount = dependencies.length;
         const dependencyButtonText = dependenciesCount;
 
         newRow.innerHTML = `
             <td class="drag-handle"><i class="bi bi-grip-vertical"></i></td>
             <td><input type="text" class="form-control form-control-sm" name="taskResponsible" value="${data.responsible || ''}"></td>
             <td><input type="text" class="form-control form-control-sm" name="taskName" value="${data.name || ''}"></td>
+            <td class="subtask-cell text-center">
+                <button type="button" class="btn btn-sm btn-link subtask-count-btn" data-task-id="${taskId}">0</button>
+            </td>
             <td><input type="number" class="form-control form-control-sm" name="taskValue" value="${data.value || 0}"></td>
             <td class="dependency-cell text-center">
                 <button type="button" class="btn btn-sm btn-light w-100" data-bs-toggle="modal" data-bs-target="#dependencyModal" data-task-id="${taskId}">
                     ${dependencyButtonText}
                 </button>
             </td>
-            <td><input type="date" class="form-control form-control-sm" name="taskStartDate" value="${data.startDate || ''}"></td>
-            <td><input type="date" class="form-control form-control-sm" name="taskEndDate" value="${data.endDate || ''}"></td>
+            <td><input type="date" class="form-control form-control-sm" name="taskStartDate" value="${data.startDate || ''}" ${data.startDateIsCalculated ? 'readonly' : ''}></td>
+            <td><input type="date" class="form-control form-control-sm" name="taskEndDate" value="${data.endDate || ''}" ${data.endDateIsCalculated ? 'readonly' : ''}></td>
             <td class="duration-cell text-center align-middle">--</td>
             <td><select class="form-select form-select-sm" name="taskStatus"><option>Pendiente</option><option>En Progreso</option><option>Completada</option></select></td>
             <td><select class="form-select form-select-sm" name="taskPriority"><option>Baja</option><option>Media</option><option>Alta</option></select></td>
             <td><button type="button" class="btn btn-sm btn-outline-secondary remove-task-btn">X</button></td>`;
         
-        tasksTbody.appendChild(newRow);
-
         if(data.status) newRow.querySelector('[name=taskStatus]').value = data.status;
         if(data.priority) newRow.querySelector('[name=taskPriority]').value = data.priority;
         
         newRow.querySelector('.remove-task-btn').addEventListener('click', () => {
+            // Eliminar la tarea del cache principal
+            allTasksCache = allTasksCache.filter(t => t.id !== taskId);
             newRow.remove();
             runGanttCalculationAndUpdateUI();
             debouncedSaveToFirestore();
         });
+
+        // Si es una tarea nueva (sin datos), la añadimos al cache
+        if (!data.id) {
+            allTasksCache.push(getSingleTaskData(newRow));
+        }
         
-        updateHeaderKPIs(getTasksData().tasks);
+        return newRow;
     }
     
+    function getSingleTaskData(row) {
+        return {
+            id: row.dataset.taskId,
+            name: row.querySelector('[name=taskName]').value,
+            responsible: row.querySelector('[name=taskResponsible]').value,
+            value: parseFloat(row.querySelector('[name=taskValue]').value) || 0,
+            dependencies: JSON.parse(row.dataset.dependencies || '[]'),
+            startDate: row.querySelector('[name=taskStartDate]').value,
+            endDate: row.querySelector('[name=taskEndDate]').value,
+            status: row.querySelector('[name=taskStatus]').value,
+            priority: row.querySelector('[name=taskPriority]').value,
+        };
+    }
+
     function getTasksData() {
-        const data = { taskListName: document.getElementById('taskListName').value, tasks: [] };
-        tasksTbody.querySelectorAll('tr').forEach(r => {
-            data.tasks.push({
-                id: r.dataset.taskId,
-                name: r.querySelector('[name=taskName]').value,
-                responsible: r.querySelector('[name=taskResponsible]').value,
-                value: parseFloat(r.querySelector('[name=taskValue]').value) || 0,
-                dependencies: JSON.parse(r.dataset.dependencies || '[]'),
-                startDate: r.querySelector('[name=taskStartDate]').value,
-                endDate: r.querySelector('[name=taskEndDate]').value,
-                status: r.querySelector('[name=taskStatus]').value,
-                priority: r.querySelector('[name=taskPriority]').value,
-            });
+        // Primero, actualizamos el cache con los datos visibles en el DOM
+        const visibleTasksMap = new Map();
+        tasksTbody.querySelectorAll('tr').forEach(row => {
+            visibleTasksMap.set(row.dataset.taskId, getSingleTaskData(row));
         });
-        return data;
+
+        // Fusionamos los datos del DOM con el cache
+        allTasksCache = allTasksCache.map(cachedTask => {
+            return visibleTasksMap.get(cachedTask.id) || cachedTask;
+        });
+
+        return { 
+            taskListName: document.getElementById('taskListName').value, 
+            tasks: allTasksCache 
+        };
     }
     
     function loadTasksFromJSON(data) {
-        tasksTbody.innerHTML = '';
         document.getElementById('taskListName').value = data.taskListName || 'Nueva Lista';
-        
-        const tasks = data.tasks || [];
-        if (Array.isArray(tasks)) {
-            tasks.forEach(taskData => addTaskRow(taskData));
-        }
-        
+        allTasksCache = data.tasks || [];
+        taskViewStack = []; // Reseteamos la navegación
         runGanttCalculationAndUpdateUI();
+    }
+
+    // --- LÓGICA DE NAVEGACIÓN DE TAREAS ---
+
+    function calculateSubtaskCounts(tasks) {
+        const counts = {};
+        tasks.forEach(task => {
+            task.dependencies.forEach(dep => {
+                counts[dep.id] = (counts[dep.id] || 0) + 1;
+            });
+        });
+        return counts;
+    }
+
+    function updateTaskView() {
+        const parentTask = taskViewStack.length > 0 ? taskViewStack[taskViewStack.length - 1] : null;
+        let tasksToShow;
+
+        if (parentTask) {
+            // Vista de sub-tareas
+            tasksToShow = allTasksCache.filter(task => 
+                task.dependencies.some(dep => dep.id === parentTask.taskId)
+            );
+            document.getElementById('task-list-title').textContent = `Sub-tareas de: ${parentTask.taskName}`;
+            document.getElementById('navigate-up-btn').style.display = 'block';
+        } else {
+            // Vista de nivel superior (tareas sin dependencias o cuyas dependencias no están en la lista)
+            const allTaskIds = new Set(allTasksCache.map(t => t.id));
+            tasksToShow = allTasksCache.filter(task => 
+                task.dependencies.length === 0 || task.dependencies.every(dep => !allTaskIds.has(dep.id))
+            );
+            document.getElementById('task-list-title').textContent = 'Lista de Tareas';
+            document.getElementById('navigate-up-btn').style.display = 'none';
+        }
+
+        renderTaskRows(tasksToShow);
+    }
+
+    function renderTaskRows(tasksToRender) {
+        tasksTbody.innerHTML = '';
+        const subtaskCounts = calculateSubtaskCounts(allTasksCache);
+
+        tasksToRender.forEach(taskData => {
+            const newRow = addTaskRow(taskData);
+            
+            // Actualizar duración
+            const durationCell = newRow.querySelector('.duration-cell');
+            if (taskData.startDate && taskData.endDate) {
+                const start = new Date(taskData.startDate);
+                const end = new Date(taskData.endDate);
+                const duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                durationCell.textContent = duration;
+            } else {
+                durationCell.textContent = '--';
+            }
+
+            // Actualizar contador de sub-tareas
+            const subtaskBtn = newRow.querySelector('.subtask-count-btn');
+            subtaskBtn.textContent = subtaskCounts[taskData.id] || 0;
+
+            tasksTbody.appendChild(newRow);
+        });
+    }
+
+    function navigateToSubtasks(taskId) {
+        const task = allTasksCache.find(t => t.id === taskId);
+        if (task) {
+            taskViewStack.push({ taskId: task.id, taskName: task.name });
+            updateTaskView();
+        }
+    }
+
+    function navigateUp() {
+        if (taskViewStack.length > 0) {
+            taskViewStack.pop();
+            updateTaskView();
+        }
     }
 
     // --- LÓGICA DEL MODAL DE DEPENDENCIAS ---
