@@ -41,23 +41,18 @@ function _getMaxDate(dateStrings) {
  * @returns {Array<Object>} Un nuevo array de tareas con las fechas calculadas y flags de estado.
  */
 function calculateTaskDates(tasks) {
-    // Crear una copia profunda para no mutar el estado original
     let calculatedTasks = JSON.parse(JSON.stringify(tasks));
     const taskMap = new Map(calculatedTasks.map(t => [t.id, t]));
 
     let datesChanged;
     let iterations = 0;
-    const maxIterations = calculatedTasks.length + 1; // Salvaguarda para evitar bucles infinitos
+    const maxIterations = calculatedTasks.length + 1;
 
-    // El bucle es necesario para que las dependencias en cadena se calculen correctamente.
-    // Por ejemplo, si C depende de B y B depende de A, en la primera pasada se calcula B,
-    // y en la segunda pasada se calcula C usando la nueva fecha de B.
     do {
         datesChanged = false;
         iterations++;
 
         calculatedTasks.forEach(task => {
-            // --- Determinar si las fechas son calculadas o libres ---
             const hasStartDependencies = task.dependencies.some(d => d.type === 'Fin-Inicio (FI)' || d.type === 'Inicio-Inicio (II)');
             const hasEndDependencies = task.dependencies.some(d => d.type === 'Fin-Fin (FF)' || d.type === 'Inicio-Fin (IF)');
 
@@ -67,18 +62,16 @@ function calculateTaskDates(tasks) {
             let newStartDate = task.startDate;
             let newEndDate = task.endDate;
 
-            // --- Calcular Fecha de Inicio (TI) ---
             if (task.startDateIsCalculated) {
                 const relevantDates = task.dependencies
                     .map(dep => {
                         const predecessor = taskMap.get(dep.id);
                         if (!predecessor) return null;
-
                         if (dep.type === 'Fin-Inicio (FI)') return predecessor.endDate;
                         if (dep.type === 'Inicio-Inicio (II)') return predecessor.startDate;
                         return null;
                     })
-                    .filter(date => date); // Filtrar nulos
+                    .filter(date => date);
 
                 const maxDate = _getMaxDate(relevantDates);
                 if (maxDate) {
@@ -86,18 +79,16 @@ function calculateTaskDates(tasks) {
                 }
             }
 
-            // --- Calcular Fecha de Término (TT) ---
             if (task.endDateIsCalculated) {
                 const relevantDates = task.dependencies
                     .map(dep => {
                         const predecessor = taskMap.get(dep.id);
                         if (!predecessor) return null;
-
                         if (dep.type === 'Fin-Fin (FF)') return predecessor.endDate;
                         if (dep.type === 'Inicio-Fin (IF)') return predecessor.startDate;
                         return null;
                     })
-                    .filter(date => date); // Filtrar nulos
+                    .filter(date => date);
 
                 const maxDate = _getMaxDate(relevantDates);
                 if (maxDate) {
@@ -105,7 +96,6 @@ function calculateTaskDates(tasks) {
                 }
             }
 
-            // --- Comprobar si las fechas han cambiado para continuar el bucle ---
             if (task.startDate !== newStartDate || task.endDate !== newEndDate) {
                 datesChanged = true;
                 task.startDate = newStartDate;
@@ -117,7 +107,11 @@ function calculateTaskDates(tasks) {
     
     if (iterations >= maxIterations) {
         console.warn("Cálculo de Gantt detenido: posible dependencia circular detectada.");
+        return {
+            tasks: calculatedTasks,
+            error: "Se ha detectado una dependencia circular. Por favor, revisa las predecesoras de tus tareas."
+        };
     }
 
-    return calculatedTasks;
+    return { tasks: calculatedTasks, error: null };
 }

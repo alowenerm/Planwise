@@ -12,10 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let dependencyModalInstance = null;
     let currentEditingTaskId = null;
     
-    // Variables para la navegación de tareas
-    let allTasksCache = []; // Siempre contiene TODAS las tareas del proyecto
-    let taskViewStack = []; // Pila para navegar: [{taskId, taskName}]
-    let isExpandedView = false; // Estado para la vista expandida
+    let allTasksCache = [];
+    let taskViewStack = [];
+    let isExpandedView = false;
 
     const debounce = (func, delay) => {
         let timeoutId;
@@ -113,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 validateAndCorrectDates(row);
                 runGanttCalculationAndUpdateUI();
             } else if (target.matches('select[name="taskStatus"]')) {
-                runGanttCalculationAndUpdateUI(); // Recalcular KPIs de estado y gráfico
+                runGanttCalculationAndUpdateUI();
             }
             
             debouncedSaveToFirestore();
@@ -126,14 +125,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isExpandedView) {
                 const targetBtn = subtaskBtn || predBtn;
                 if (targetBtn && !targetBtn.disabled) {
-                    // Si el botón es de dependencias, prevenimos que abra el modal
                     if (predBtn) e.preventDefault();
                     
-                    isExpandedView = false; // Colapsar la vista
-                    navigateToSubtasks(targetBtn.dataset.taskId); // Navegar a las sub-tareas del item clickeado
+                    isExpandedView = false;
+                    navigateToSubtasks(targetBtn.dataset.taskId);
                 }
             } else {
-                // Navegación jerárquica normal solo para el botón de sub-tareas
                 if (subtaskBtn && !subtaskBtn.disabled) {
                     navigateToSubtasks(subtaskBtn.dataset.taskId);
                 }
@@ -153,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (toggleExpandBtn) {
             toggleExpandBtn.addEventListener('click', () => {
                 isExpandedView = !isExpandedView;
-                // --- CORRECCIÓN: Ocultar el tooltip para que no se quede pegado ---
                 bootstrap.Tooltip.getInstance(toggleExpandBtn)?.hide();
                 updateTaskView();
             });
@@ -190,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentTaskListId = null;
         currentUserRole = 'owner';
         lastKnownServerState = null;
-        isExpandedView = false; // Resetear vista
+        isExpandedView = false;
         if (window.location.search !== "") history.pushState(null, '', window.location.pathname);
         setReadOnly(false);
         document.getElementById('share-task-list-btn').style.display = 'none';
@@ -297,7 +293,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updateSaveStatus('Cargando lista...');
         unsubscribeTaskList = db.collection('tareas').doc(taskListId).onSnapshot((doc) => {
-            // Si el documento no existe, cargar una nueva lista.
             if (!doc.exists) {
                 alert("La lista ya no existe o no tienes acceso.");
                 if (unsubscribeTaskList) unsubscribeTaskList();
@@ -305,18 +300,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Si el cambio proviene de una escritura local, ignorarlo para no reiniciar la UI.
             if (doc.metadata.hasPendingWrites) {
                 return;
             }
 
-            // Si el cambio es remoto (de otro usuario), actualizar los datos suavemente.
             console.log("Remote change detected, refreshing data...");
             const serverData = doc.data();
             document.getElementById('taskListName').value = serverData.taskListName || 'Nueva Lista';
             allTasksCache = serverData.tasks || [];
             
-            // Volver a calcular y dibujar la UI sin reiniciar el estado de la vista.
             runGanttCalculationAndUpdateUI();
             updateSaveStatus('Lista actualizada');
 
@@ -500,15 +492,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function runGanttCalculationAndUpdateUI() {
         const currentTasks = getTasksData().tasks;
-        const calculatedTasks = calculateTaskDates(currentTasks);
+        const result = calculateTaskDates(currentTasks);
         
-        allTasksCache = calculatedTasks;
+        if (result.error) {
+            alert(result.error);
+        }
+
+        allTasksCache = result.tasks;
         updateTaskView();
-        updateHeaderKPIs(calculatedTasks);
+        updateHeaderKPIs(allTasksCache);
         
-        // Solo renderizar el Gantt si la pestaña está activa, para evitar errores.
         if (document.getElementById('gantt-tab-btn').classList.contains('active')) {
-            renderGanttChart(calculatedTasks);
+            renderGanttChart(allTasksCache);
         }
     }
 
@@ -521,8 +516,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#kpi4 .header-kpi-value').textContent = completedTasks.length;
         document.querySelector('#kpi5 .header-kpi-value').textContent = tasks.reduce((sum, task) => sum + (Number(task.value) || 0), 0).toLocaleString('es-CL');
         
-        const validStartDates = tasks.map(t => t.startDate).filter(d => d).map(d => new Date(d));
-        const validEndDates = tasks.map(t => t.endDate).filter(d => d).map(d => new Date(d));
+        // --- CORRECCIÓN: Función auxiliar para parsear fechas sin problemas de zona horaria ---
+        const parseDateAsLocal = (dateString) => {
+            if (!dateString) return null;
+            const [year, month, day] = dateString.split('-').map(Number);
+            // new Date(year, monthIndex, day) - month es 0-indexado
+            return new Date(year, month - 1, day);
+        };
+
+        const validStartDates = tasks.map(t => parseDateAsLocal(t.startDate)).filter(d => d);
+        const validEndDates = tasks.map(t => parseDateAsLocal(t.endDate)).filter(d => d);
 
         const projectStartDate = validStartDates.length > 0 ? new Date(Math.min.apply(null, validStartDates)) : null;
         const projectEndDate = validEndDates.length > 0 ? new Date(Math.max.apply(null, validEndDates)) : null;
@@ -629,14 +632,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadTasksFromJSON(data) {
-        document.getElementById('taskListName').value = data.taskListName || 'Nueva Lista';
-        allTasksCache = data.tasks || [];
+        const result = calculateTaskDates(data.tasks || []);
+        if (result.error) {
+            alert(`Error en el archivo importado: ${result.error}`);
+            // Cargar una lista vacía para evitar problemas
+            document.getElementById('taskListName').value = data.taskListName || 'Nuevo Proyecto';
+            allTasksCache = [];
+        } else {
+            document.getElementById('taskListName').value = data.taskListName || 'Nuevo Proyecto';
+            allTasksCache = result.tasks;
+        }
+        
         taskViewStack = [];
         isExpandedView = false;
         runGanttCalculationAndUpdateUI();
     }
 
-    // --- LÓGICA DE NAVEGACIÓN DE TAREAS ---
+    // --- LÓGICA DE NAVEGACIÓN Y DEPENDENCIAS ---
+
+    function getSuccessorIds(startTaskId, allTasks) {
+        const successors = new Set();
+        const queue = [startTaskId];
+        const visited = new Set([startTaskId]);
+
+        const taskMap = new Map(allTasks.map(t => [t.id, t.dependencies]));
+
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            for (const [taskId, dependencies] of taskMap.entries()) {
+                if (dependencies.some(dep => dep.id === currentId)) {
+                    if (!visited.has(taskId)) {
+                        successors.add(taskId);
+                        visited.add(taskId);
+                        queue.push(taskId);
+                    }
+                }
+            }
+        }
+        return successors;
+    }
 
     function calculateSubtaskCounts(tasks) {
         const counts = {};
@@ -683,7 +717,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (toggleBtn) toggleBtn.setAttribute('data-bs-original-title', 'Expandir todo');
         }
         
-        // Re-inicializar tooltips para el botón que cambió de título
         if (toggleBtn) new bootstrap.Tooltip(toggleBtn);
 
         renderTaskRows(tasksToShow);
@@ -732,7 +765,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- LÓGICA DEL MODAL DE DEPENDENCIAS ---
     function initDependencyModal() {
         const modalEl = document.getElementById('dependencyModal');
         if (!modalEl) return;
@@ -750,7 +782,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const allTasks = getTasksData().tasks;
         const editingTask = allTasks.find(t => t.id === editingTaskId);
         const currentDependencies = editingTask.dependencies || [];
-        const availableTasks = allTasks.filter(t => t.id !== editingTaskId);
+        
+        const successorIds = getSuccessorIds(editingTaskId, allTasks);
+        const availableTasks = allTasks.filter(t => t.id !== editingTaskId && !successorIds.has(t.id));
 
         document.getElementById('dependency-task-name').textContent = editingTask.name || 'Tarea sin nombre';
         const searchInput = document.getElementById('dependency-search-input');
@@ -861,7 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- IMPORT/EXPORT/COPIAR ---
     function downloadFile(content, filename, mimeType) { const blob = new Blob([`\uFEFF${content}`], { type: mimeType }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); }
     document.getElementById('export-model-btn').addEventListener('click', () => { const data = getTasksData(); downloadFile(JSON.stringify(data, null, 2), `tareas_${data.taskListName.replace(/[^a-z0-9]/gi, '_')}.json`, 'application/json'); });
-    document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const params = JSON.parse(e.target.result); if (!params.tasks) throw new Error("Formato inválido."); loadTasksFromJSON(params); alert("Tareas importadas."); saveTaskListToFirestore(); } catch { alert("Archivo JSON no válido."); } }; reader.readAsText(file); event.target.value = ''; });
+    document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const params = JSON.parse(e.target.result); const validationResult = calculateTaskDates(params.tasks || []); if (validationResult.error) { alert(`Error en el archivo importado: ${validationResult.error}`); return; } loadTasksFromJSON(params); alert("Tareas importadas."); saveTaskListToFirestore(); } catch { alert("Archivo JSON no válido."); } }; reader.readAsText(file); event.target.value = ''; });
     document.getElementById('copy-tasks-btn').addEventListener('click', () => { const table = document.querySelector('#tasks table'); if (!table) return; const tsv = Array.from(table.querySelectorAll('tr')).map(r => Array.from(r.querySelectorAll('th, td')).slice(1, -1).map(c => `"${(c.querySelector('input, select')?.value || c.textContent).trim()}"`).join('\t')).join('\n'); navigator.clipboard.writeText(tsv).then(() => alert('Tabla copiada.')); });
 
     // --- ESTADO DE GUARDADO ---
