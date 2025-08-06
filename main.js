@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    // --- FUNCIONES DE AUTENTICACIÓN (Sin cambios) ---
+    // --- FUNCIONES DE AUTENTICACIÓN ---
     const showAuthMessage = (message, type = 'danger') => {
         authErrorEl.textContent = message;
         authErrorEl.className = `alert alert-${type}`;
@@ -121,6 +121,12 @@ document.addEventListener('DOMContentLoaded', function() {
         tasksTbody.addEventListener('click', (e) => {
             const subtaskBtn = e.target.closest('.subtask-count-btn');
             const predBtn = e.target.closest('.dependency-cell button');
+            const detailBtn = e.target.closest('.detail-task-btn');
+
+            if (detailBtn) {
+                openTaskDetailTab(detailBtn.dataset.taskId);
+                return;
+            }
 
             if (isExpandedView) {
                 const targetBtn = subtaskBtn || predBtn;
@@ -159,6 +165,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (ganttTabBtn) {
             ganttTabBtn.addEventListener('shown.bs.tab', () => {
                 renderGanttChart(allTasksCache);
+            });
+        }
+
+        const depGraphTabBtn = document.getElementById('dep-graph-tab-btn');
+        if (depGraphTabBtn) {
+            depGraphTabBtn.addEventListener('shown.bs.tab', () => {
+                renderDependencyGraph(allTasksCache);
             });
         }
 
@@ -203,7 +216,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }    
 
     // --- FUNCIONES DE DATOS (FIRESTORE) ---
-    async function saveTaskListToFirestore() {
+
+
+        async function saveTaskListToFirestore() {
         if (!currentUserId || isReadOnlyMode) return;
         const data = getTasksData();
         const taskListDataToSave = {
@@ -216,28 +231,43 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!currentTaskListId) {
             updateSaveStatus('Creando lista...');
             try {
-                const newDocRef = await db.collection('tareas').add({
+                // CORRECCIÓN: Usar un BATCH para la creación atómica.
+                const batch = db.batch();
+                
+                // 1. Crear una referencia para el nuevo documento para obtener su ID por adelantado.
+                const newTaskListRef = db.collection('tareas').doc();
+                
+                // 2. Añadir la creación del documento principal al batch.
+                batch.set(newTaskListRef, {
                     ...taskListDataToSave,
                     ownerId: currentUserId,
                     creationDate: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                currentTaskListId = newDocRef.id;
-
-                await db.collection('tareas').doc(currentTaskListId).collection('members').doc(currentUserId).set({
+                // 3. Añadir la creación del miembro 'owner' al batch.
+                const memberRef = newTaskListRef.collection('members').doc(currentUserId);
+                batch.set(memberRef, {
                     email: auth.currentUser.email,
                     role: 'owner'
                 });
 
-                 await db.collection('user_task_lists').doc(currentUserId).collection('lists').doc(currentTaskListId).set({
+                // 4. Añadir la creación del enlace en la lista del usuario al batch.
+                const userListRef = db.collection('user_task_lists').doc(currentUserId).collection('lists').doc(newTaskListRef.id);
+                batch.set(userListRef, {
                     name: data.taskListName,
                     role: 'owner'
                 });
 
+                // 5. Ejecutar todas las operaciones del batch.
+                await batch.commit();
+                
+                // Ahora que todo se creó correctamente, actualizar el estado de la app.
+                currentTaskListId = newTaskListRef.id;
                 const newUrl = `${window.location.pathname}?id=${currentTaskListId}`;
                 history.pushState({ path: newUrl }, '', newUrl);
                 await listenToTaskList(currentTaskListId);
                 updateSaveStatus('Guardado');
+
             } catch (error) {
                 console.error("Error creando lista:", error);
                 updateSaveStatus('Error al crear', true);
@@ -516,11 +546,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#kpi4 .header-kpi-value').textContent = completedTasks.length;
         document.querySelector('#kpi5 .header-kpi-value').textContent = tasks.reduce((sum, task) => sum + (Number(task.value) || 0), 0).toLocaleString('es-CL');
         
-        // --- CORRECCIÓN: Función auxiliar para parsear fechas sin problemas de zona horaria ---
         const parseDateAsLocal = (dateString) => {
             if (!dateString) return null;
             const [year, month, day] = dateString.split('-').map(Number);
-            // new Date(year, monthIndex, day) - month es 0-indexado
             return new Date(year, month - 1, day);
         };
 
@@ -582,7 +610,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <td class="duration-cell text-center align-middle">--</td>
             <td><select class="form-select form-select-sm" name="taskStatus"><option>Pendiente</option><option>En Progreso</option><option>Completada</option></select></td>
             <td><select class="form-select form-select-sm" name="taskPriority"><option>Baja</option><option>Media</option><option>Alta</option></select></td>
-            <td><button type="button" class="btn btn-sm btn-outline-secondary remove-task-btn">X</button></td>`;
+            <td><button type="button" class="btn btn-sm btn-outline-secondary remove-task-btn">X</button></td>
+            <td><button type="button" class="btn btn-sm btn-light detail-task-btn" data-task-id="${taskId}"><i class="bi bi-three-dots-vertical"></i></button></td>`;
         
         if(data.status) newRow.querySelector('[name=taskStatus]').value = data.status;
         if(data.priority) newRow.querySelector('[name=taskPriority]').value = data.priority;
@@ -635,7 +664,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const result = calculateTaskDates(data.tasks || []);
         if (result.error) {
             alert(`Error en el archivo importado: ${result.error}`);
-            // Cargar una lista vacía para evitar problemas
             document.getElementById('taskListName').value = data.taskListName || 'Nuevo Proyecto';
             allTasksCache = [];
         } else {
@@ -649,6 +677,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- LÓGICA DE NAVEGACIÓN Y DEPENDENCIAS ---
+
+    function openTaskDetailTab(taskId) {
+        if (currentTaskListId && taskId) {
+            const url = `task-detail.html?listId=${currentTaskListId}&taskId=${taskId}`;
+            window.open(url, '_blank');
+        } else {
+            console.error(`No se pudo abrir el detalle: falta listId o taskId.`);
+            alert("Primero guarda la lista para poder ver los detalles de la tarea.");
+        }
+    }
+    window.openTaskDetailTab = openTaskDetailTab;
 
     function getSuccessorIds(startTaskId, allTasks) {
         const successors = new Set();

@@ -271,3 +271,12 @@ input[readonly] {
     color: #0d6efd; /* Bootstrap primary blue */
     text-decoration-color: #0d6efd;
 }
+/* --- ESTILOS PARA GRÁFICO MERMAID (ÁRBOL DE DEPENDENCIAS) --- */
+#dependency-graph-container .node rect {
+    fill: rgba(212, 237, 218, 0.85); /* Verde claro semitransparente */
+    stroke: none; /* Sin borde */
+}
+
+#dependency-graph-container .node text {
+    fill: #0f5132; /* Texto oscuro para mejorar contraste sobre fondo claro */
+}

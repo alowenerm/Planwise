@@ -85,6 +85,11 @@
                         <i class="bi bi-bar-chart-line"></i> <span class="nav-link-text">Carta Gantt</span>
                     </button>
                 </li>
+                <li class="nav-item mb-1" role="presentation">
+                    <button class="nav-link" id="dep-graph-tab-btn" data-bs-toggle="pill" data-bs-target="#dep-graph" type="button" role="tab">
+                        <i class="bi bi-diagram-3"></i> <span class="nav-link-text">Árbol Dependencias</span>
+                    </button>
+                </li>
                  <li class="nav-item dropdown user-menu-item mt-auto">
                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle"></i>
@@ -149,7 +154,7 @@
                     <!-- PESTAÑA TAREAS -->
                     <div class="tab-pane fade show active p-3 border rounded" id="tasks" role="tabpanel" aria-labelledby="tasks-tab-btn">
                         <div class="card">
-                        <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                            <div class="card-header fw-bold d-flex justify-content-between align-items-center">
                                 <div>
                                     <span id="task-list-title">Lista de Tareas</span>
                                     <span id="breadcrumb-title" class="text-muted fw-normal ms-2"></span>
@@ -158,7 +163,6 @@
                                     <i class="bi bi-arrows-fullscreen"></i>
                                 </button>
                             </div>
-
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-sm">
@@ -175,6 +179,7 @@
                                                 <th style="width: 8%;">Duración (días)</th>
                                                 <th style="width: 12%;">Estado</th>
                                                 <th style="width: 9%;">Prioridad</th>
+                                                <th></th>
                                                 <th></th>
                                             </tr>
                                         </thead>
@@ -196,6 +201,17 @@
                             </div>
                             <div class="card-body">
                                 <div id="gantt-chart-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- PESTAÑA ÁRBOL DE DEPENDENCIAS -->
+                    <div class="tab-pane fade p-3 border rounded" id="dep-graph" role="tabpanel" aria-labelledby="dep-graph-tab-btn">
+                        <div class="card">
+                            <div class="card-header fw-bold">
+                                <span>Árbol de Dependencias del Proyecto</span>
+                            </div>
+                            <div class="card-body text-center">
+                                <div id="dependency-graph-container"></div>
                             </div>
                         </div>
                     </div>
@@ -281,9 +297,12 @@
     <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
     
     <!-- Our Custom Scripts (Order is important!) -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: false });</script>
     <script src="firebase-config.js"></script>
     <script src="gantt-calculator.js"></script>
     <script src="gantt-chart.js"></script>
+    <script src="dependency-graph.js"></script>
     <script src="main.js"></script>
 
 </body>

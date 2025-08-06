@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de Tarea</title>
+    <link rel="icon" type="image/png" href="https://alowenerm.github.io/Ciclos/brickwise-ft.png">
+    
+    <!-- CSS Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+</head>
+<body>
+    <div class="container-fluid my-3">
+        <!-- Encabezado Replicado -->
+        <div id="app-header">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-3 flex-grow-1">
+                    <a href="index.html">
+                        <img src="https://alowenerm.github.io/Ciclos/brickwise-ft.png" alt="Logo" style="height: 48px;">
+                    </a>
+                    <h4 id="task-list-name-header" class="mb-0">Cargando...</h4>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span id="save-status"></span>
+                    <button id="close-window-btn" class="btn btn-outline-secondary" title="Cerrar Ventana"><i class="bi bi-x-lg"></i> Cerrar</button>
+                </div>
+            </div>
+            <div id="header-kpi-container" class="d-flex flex-column gap-2">
+                <!-- Filas de KPIs se insertarán aquí por JS -->
+            </div>
+        </div>
+
+        <!-- Contenido del Detalle de Tarea -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Detalle de Tarea</h5>
+            </div>
+            <div class="card-body" id="task-detail-content">
+                <p class="text-muted">Cargando datos de la tarea...</p>
+            </div>
+        </div>
+
+        <!-- Sección de Comentarios -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Comentarios</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <textarea id="new-comment-input" class="form-control" rows="3" placeholder="Añade un comentario..."></textarea>
+                    <button id="add-comment-btn" class="btn btn-primary mt-2">Enviar</button>
+                </div>
+                <hr>
+                <div id="comments-list">
+                    <p class="text-muted">No hay comentarios aún.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- INICIALIZACIÓN Y CONFIGURACIÓN ---
+            // CORRECCIÓN: Se eliminó la línea firebase.initializeApp(firebaseConfig);
+            // Las variables db y auth ahora usan la instancia creada en firebase-config.js
+            const db = firebase.firestore();
+            const auth = firebase.auth();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const listId = urlParams.get('listId');
+            const taskId = urlParams.get('taskId');
+
+            let currentUser = null;
+            let currentTaskData = null;
+            let allTasksInList = [];
+            let unsubscribeTaskList = null;
+            let unsubscribeComments = null;
+
+            const debounce = (func, delay) => {
+                let timeoutId;
+                return function(...args) {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => func.apply(this, args), delay);
+                };
+            };
+
+            // --- SELECTORES DE ELEMENTOS ---
+            const contentDiv = document.getElementById('task-detail-content');
+            const commentsListDiv = document.getElementById('comments-list');
+            const addCommentBtn = document.getElementById('add-comment-btn');
+            const newCommentInput = document.getElementById('new-comment-input');
+            document.getElementById('close-window-btn').addEventListener('click', () => window.close());
+
+            // --- AUTENTICACIÓN ---
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    if (listId && taskId) {
+                        loadTaskListData();
+                        loadComments();
+                    } else {
+                        contentDiv.innerHTML = '<p class="text-danger">Error: Faltan los parámetros listId o taskId en la URL.</p>';
+                    }
+                } else {
+                    contentDiv.innerHTML = '<p class="text-danger">Necesitas iniciar sesión para ver esta página.</p>';
+                }
+            });
+
+            // --- CARGA DE DATOS ---
+            function loadTaskListData() {
+                if (unsubscribeTaskList) unsubscribeTaskList();
+                unsubscribeTaskList = db.collection('tareas').doc(listId).onSnapshot(doc => {
+                    if (!doc.exists) {
+                        contentDiv.innerHTML = '<p class="text-danger">La lista de tareas no existe o no tienes acceso.</p>';
+                        return;
+                    }
+                    const taskListData = doc.data();
+                    allTasksInList = taskListData.tasks || [];
+                    currentTaskData = allTasksInList.find(t => t.id === taskId);
+
+                    if (!currentTaskData) {
+                        contentDiv.innerHTML = '<p class="text-danger">La tarea no fue encontrada en esta lista.</p>';
+                        return;
+                    }
+                    
+                    document.title = `${currentTaskData.name} - Detalle`;
+                    document.getElementById('task-list-name-header').textContent = taskListData.taskListName || 'Proyecto sin nombre';
+                    renderTaskDetails();
+                    // Simulación de KPIs (puedes expandir esto si es necesario)
+                    document.getElementById('header-kpi-container').innerHTML = `<div class="text-muted">KPIs de la lista principal.</div>`;
+                }, error => {
+                    console.error("Error cargando la lista:", error);
+                    contentDiv.innerHTML = '<p class="text-danger">Error al cargar los datos.</p>';
+                });
+            }
+
+            function renderTaskDetails() {
+                const task = currentTaskData;
+                contentDiv.innerHTML = `
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label detail-label">Nombre de la Tarea</label>
+                            <input type="text" class="form-control" id="taskName" value="${task.name || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label detail-label">Responsable</label>
+                            <input type="text" class="form-control" id="taskResponsible" value="${task.responsible || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label detail-label">Valor</label>
+                            <input type="number" class="form-control" id="taskValue" value="${task.value || 0}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label detail-label">Fecha de Inicio</label>
+                            <input type="date" class="form-control" id="taskStartDate" value="${task.startDate || ''}" ${task.startDateIsCalculated ? 'readonly' : ''}>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label detail-label">Fecha de Fin</label>
+                            <input type="date" class="form-control" id="taskEndDate" value="${task.endDate || ''}" ${task.endDateIsCalculated ? 'readonly' : ''}>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label detail-label">Estado</label>
+                            <select class="form-select" id="taskStatus">
+                                <option>Pendiente</option>
+                                <option>En Progreso</option>
+                                <option>Completada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label detail-label">Prioridad</label>
+                            <select class="form-select" id="taskPriority">
+                                <option>Baja</option>
+                                <option>Media</option>
+                                <option>Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                // Asignar valores a los selects
+                document.getElementById('taskStatus').value = task.status;
+                document.getElementById('taskPriority').value = task.priority;
+
+                // Añadir listeners para el guardado automático
+                contentDiv.querySelectorAll('input, select').forEach(el => {
+                    el.addEventListener('change', debouncedSaveTaskChanges);
+                });
+            }
+
+            function loadComments() {
+                if (unsubscribeComments) unsubscribeComments();
+                unsubscribeComments = db.collection('task_comments')
+                    .where('listId', '==', listId)
+                    .where('taskId', '==', taskId)
+                    .orderBy('timestamp', 'desc')
+                    .onSnapshot(snapshot => {
+                        if (snapshot.empty) {
+                            commentsListDiv.innerHTML = '<p class="text-muted">No hay comentarios aún.</p>';
+                            return;
+                        }
+                        let commentsHtml = '';
+                        snapshot.forEach(doc => {
+                            const comment = doc.data();
+                            const date = comment.timestamp ? comment.timestamp.toDate().toLocaleString('es-CL') : 'Fecha desconocida';
+                            commentsHtml += `
+                                <div class="border-bottom pb-2 mb-2">
+                                    <p class="mb-1">${comment.text}</p>
+                                    <small class="text-muted">Por <strong>${comment.userName || 'Usuario'}</strong> el ${date}</small>
+                                </div>
+                            `;
+                        });
+                        commentsListDiv.innerHTML = commentsHtml;
+                    });
+            }
+
+            // --- GUARDADO DE DATOS ---
+            const saveTaskChanges = () => {
+                if (!listId || !currentTaskData) return;
+                updateSaveStatus('Guardando...');
+
+                const updatedTask = {
+                    ...currentTaskData,
+                    name: document.getElementById('taskName').value,
+                    responsible: document.getElementById('taskResponsible').value,
+                    value: parseFloat(document.getElementById('taskValue').value) || 0,
+                    startDate: document.getElementById('taskStartDate').value,
+                    endDate: document.getElementById('taskEndDate').value,
+                    status: document.getElementById('taskStatus').value,
+                    priority: document.getElementById('taskPriority').value,
+                };
+
+                const taskIndex = allTasksInList.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) {
+                    updateSaveStatus('Error: Tarea no encontrada', true);
+                    return;
+                }
+                
+                const newTasksArray = [...allTasksInList];
+                newTasksArray[taskIndex] = updatedTask;
+
+                db.collection('tareas').doc(listId).update({ tasks: newTasksArray })
+                    .then(() => {
+                        updateSaveStatus('Guardado');
+                    })
+                    .catch(error => {
+                        console.error("Error guardando cambios:", error);
+                        updateSaveStatus('Error al guardar', true);
+                    });
+            };
+            const debouncedSaveTaskChanges = debounce(saveTaskChanges, 1500);
+
+            const addComment = () => {
+                const text = newCommentInput.value.trim();
+                if (!text || !currentUser) return;
+
+                addCommentBtn.disabled = true;
+                db.collection('task_comments').add({
+                    listId: listId,
+                    taskId: taskId,
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName || currentUser.email,
+                    text: text,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    newCommentInput.value = '';
+                }).catch(error => {
+                    console.error("Error añadiendo comentario:", error);
+                    alert("No se pudo añadir el comentario.");
+                }).finally(() => {
+                    addCommentBtn.disabled = false;
+                });
+            };
+            addCommentBtn.addEventListener('click', addComment);
+
+            // --- UTILIDADES ---
+            const saveStatusEl = document.getElementById('save-status');
+            let saveTimeout;
+            function updateSaveStatus(status, isError = false) {
+                clearTimeout(saveTimeout);
+                saveStatusEl.style.opacity = 1;
+                if (isError) {
+                    saveStatusEl.innerHTML = `<i class="bi bi-x-circle-fill text-danger"></i> ${status}`;
+                } else if (status.includes('...')) {
+                    saveStatusEl.innerHTML = `<span class="spinner-border spinner-border-sm"></span> ${status}`;
+                } else {
+                    saveStatusEl.innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${status}`;
+                    saveTimeout = setTimeout(() => { saveStatusEl.style.opacity = 0; }, 2000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
